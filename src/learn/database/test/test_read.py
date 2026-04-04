@@ -21,14 +21,12 @@ def read_key(lmdb_path, key_str):
 
         print("=== BYTES ===")
         print(value[:200])
-
-        print("\n=== STRING ===")
-        try:
-            print(value.decode("utf-8"))
-        except UnicodeDecodeError:
-            print("Value is not valid UTF-8")
+        
+        open(key_str, "wb").write(value)
 
     env.close()
 
 if __name__ == "__main__":
     read_key("/mnt/matylda1/ikiss/data/knn_ocr/impact/lines_48-1.15.lmdb", "impact-107352-r13-l006.jpg")
+    read_key("/mnt/matylda1/ikiss/data/knn_ocr/read/lines_48-1.15.lmdb", "read-000001-r1-l000.jpg")
+    read_key("/mnt/matylda1/ikiss/data/knn_ocr/rodrigo/lines_48-1.15.lmdb", "241-r000-l020.jpg")

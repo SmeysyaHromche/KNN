@@ -16,6 +16,7 @@ def read_key(lmdb_path, key_str):
         print(value)
         print()
 
+        # print as string (if possible)
         print("=== STRING (utf-8) ===")
         try:
             print(value.decode("utf-8"))
@@ -27,4 +28,4 @@ def read_key(lmdb_path, key_str):
 
 if __name__ == "__main__":
     # example usage
-    read_key("data.lmdb", "impact-107352-r13-l006.jpg")
+    read_key("/mnt/matylda1/ikiss/data/knn_ocr/impact/lines_48-1.15.lmdb", "0")

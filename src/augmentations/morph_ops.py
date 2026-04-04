@@ -11,11 +11,6 @@ class RandomMorphology(Transform):
 
     This transformation randomly applies either **erosion** or **dilatation**
     to the input image using a square kernel of randomly chosen odd size.
-
-    :param probability: Probability of applying the transformation.
-    :param kernel_size_range: Minimum and maximum kernel sizes for
-                              the morphological operations. Must be
-                              odd integers.
     """
 
     def __init__(self, probability: float = 1.0, kernel_size_range : tuple[int, int] = (1, 3)) -> None:

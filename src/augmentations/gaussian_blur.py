@@ -10,10 +10,6 @@ class GaussianBlur(Transform):
 
     Gaussian blur helps to simulate slight camera or scanning imperfections,
     which can make OCR models more robust to real-world data.
-
-    :param probability: Probability of applying the blur.
-    :param kernel_size_range: Minimum and maximum kernel size for the Gaussian blur
-    (both must be odd).
     """
 
     def __init__(self, probability: float = 1.0, kernel_size_range: tuple[int, int] = (5, 20)) -> None:

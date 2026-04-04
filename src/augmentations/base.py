@@ -1,4 +1,5 @@
 import random
+import numpy as np
 from abc import ABC, abstractmethod
 
 
@@ -11,7 +12,7 @@ class Transform(ABC):
     :param probability: Probability of applying the transformation.
     """
 
-    def __init__(self, probability: float = 1.0):
+    def __init__(self, probability: float = 1.0) -> None:
         """
         Initialize the transformation.
 
@@ -19,7 +20,7 @@ class Transform(ABC):
         """
         self.p = probability
 
-    def __call__(self, image):
+    def __call__(self, image: np.ndarray) -> np.ndarray:
         """
         Apply the transformation to the input image with a given probability.
 
@@ -33,7 +34,7 @@ class Transform(ABC):
         return image
     
     @abstractmethod
-    def apply(self, image):
+    def apply(self, image: np.ndarray) -> np.ndarray:
         """
         Abstract method for applying the transformation.
 

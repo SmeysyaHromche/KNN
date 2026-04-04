@@ -1,4 +1,5 @@
-from base import Transform
+import numpy as np
+from augmentations.base import Transform
 
 
 class Compose:
@@ -12,7 +13,7 @@ class Compose:
     :param transforms: Sequence of transformations to apply.
     """
 
-    def __init__(self, transforms: list[Transform]):
+    def __init__(self, transforms: list[Transform]) -> None:
         """
         Initialize the composition.
 
@@ -20,7 +21,7 @@ class Compose:
         """
         self.transforms = transforms
 
-    def __call__(self, image):
+    def __call__(self, image: np.ndarray) -> np.ndarray:
         """
         Apply all transformations to the image.
 

@@ -43,3 +43,46 @@ class RandomSkew(Transform):
                                 [0, 1, 0]], dtype=np.float32)
         
         return cv.warpAffine(image, skew_matrix, (new_width, height), borderMode=cv.BORDER_REPLICATE)
+
+
+class ElasticTransform(Transform):
+    """
+    Apply elastic distortions to the image with a given probability.
+
+    Simulates natural handwriting variability in shape and strokes.
+    """
+    def __init__(self, probability: float = 1.0, alpha: float = 50.0, sigma: float = 6.0) -> None:
+        """
+        Initialize the GaussianNoise transformation.
+
+        :param probability: Probability of applying the distortion.
+        :param alpha: Scaling factor for deformation intensity.
+        :param sigma: Standard deviation for Gaussian smoothing of displacement fields.
+        """
+        
+        super().__init__(probability)
+        self.alpha: float = alpha
+        self.sigma: float = sigma
+
+    def apply(self, image: np.ndarray) -> np.ndarray:
+        """
+        Apply elastic distortion using random displacement fields.
+
+        :param image: Input image (NumPy array) to distort.
+        :return: Distorted image as a NumPy array.
+        """
+        random_state = np.random.RandomState(None)
+        shape = image.shape[:2]
+
+        dx: np.ndarray = cv.GaussianBlur(
+            (random_state.rand(*shape) * 2 - 1).astype(np.float32), (0, 0), self.sigma
+        ) * self.alpha
+        dy: np.ndarray = cv.GaussianBlur(
+            (random_state.rand(*shape) * 2 - 1).astype(np.float32), (0, 0), self.sigma
+        ) * self.alpha
+
+        x, y = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+        map_x: np.ndarray = (x + dx).astype(np.float32)
+        map_y: np.ndarray = (y + dy).astype(np.float32)
+
+        return cv.remap(image, map_x, map_y, interpolation=cv.INTER_LINEAR, borderMode=cv.BORDER_REFLECT)

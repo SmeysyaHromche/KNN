@@ -19,4 +19,4 @@ def read_first_10(lmdb_path):
 
 
 if __name__ == "__main__":
-    read_first_10("data.lmdb")
+    read_first_10("/home/xkukht01/Dev/KNN/data")

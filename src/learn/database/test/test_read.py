@@ -2,30 +2,33 @@ import lmdb
 
 
 def read_key(lmdb_path, key_str):
-    env = lmdb.open(lmdb_path, readonly=True, lock=False)
+    env = lmdb.open(
+        lmdb_path,
+        readonly=True,
+        lock=False,
+        readahead=False,
+        meminit=False,
+        max_readers=1,
+    )
 
     with env.begin() as txn:
         key = key_str.encode("utf-8")
         value = txn.get(key)
 
         if value is None:
-            print(f"Key '{key_str}' not found")
+            print(f"Key {key_str!r} not found")
             return
 
         print("=== BYTES ===")
-        print(value)
-        print()
+        print(value[:200])
 
-        # print as string (if possible)
-        print("=== STRING (utf-8) ===")
+        print("\n=== STRING ===")
         try:
             print(value.decode("utf-8"))
         except UnicodeDecodeError:
-            print("Cannot decode as UTF-8 (likely binary data)")
+            print("Value is not valid UTF-8")
 
     env.close()
 
-
 if __name__ == "__main__":
-    # example usage
-    read_key("/mnt/matylda1/ikiss/data/knn_ocr/impact/lines_48-1.15.lmdb", "0")
+    read_key("/mnt/matylda1/ikiss/data/knn_ocr/impact/lines_48-1.15.lmdb", "impact-107352-r13-l006.jpg")

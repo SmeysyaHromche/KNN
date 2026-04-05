@@ -2,7 +2,6 @@
 
 ENV_DIR=".venv"
 PYTHON_BIN="python3.12"
-REQUIREMENTS_FILE="requirements.txt"
 
 show_help() {
     echo "Usage: $0 [OPTION]"
@@ -19,6 +18,15 @@ safe_return() {
     return "$1" 2>/dev/null || exit "$1"
 }
 
+install_project() {
+    if [ -f "pyproject.toml" ]; then
+        echo "Installing project from pyproject.toml..."
+        pip install -e . || safe_return 1
+    else
+        echo "No pyproject.toml found, skipping install."
+    fi
+}
+
 create_env() {
     echo "Creating virtual environment..."
     "$PYTHON_BIN" -m venv "$ENV_DIR" || safe_return 1
@@ -29,12 +37,7 @@ create_env() {
     echo "Upgrading pip..."
     pip install --upgrade pip || safe_return 1
 
-    if [ -f "$REQUIREMENTS_FILE" ]; then
-        echo "Installing requirements..."
-        pip install -r "$REQUIREMENTS_FILE" || safe_return 1
-    else
-        echo "No requirements.txt found, skipping install."
-    fi
+    install_project
 
     echo "Environment ready."
 }

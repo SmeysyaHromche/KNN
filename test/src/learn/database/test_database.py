@@ -68,8 +68,8 @@ def save_batch_images_with_padding(
 
 if __name__ == "__main__":
     dataset = OcrDataset(
-        path_to_db="/home/xkukht01/Dev/KNN/.data/.data",
-        path_to_meta_db="/home/xkukht01/Dev/KNN/.data/.meta",
+        path_to_db="/mnt/matylda1/ikiss/data/knn_ocr/impact/lines_48-1.15.lmdb",
+        path_to_meta_db="/homes/eva/xk/xkukht01/Dev/KNN/.data/.db/d",
     )
 
     my_collate_fn = OcrCollateFn(32, 1.0)

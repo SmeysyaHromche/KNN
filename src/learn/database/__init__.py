@@ -1,4 +1,4 @@
-from .ocrdataset import OCRDataset
-from .ocrcollatefn import OCRCollateFn
+from .ocrdataset import OcrDataset
+from .ocrcollatefn import OcrCollateFn
 
-__all__ = ["OCRDataset","OCRCollateFn"]
+__all__ = ["OcrDataset","OcrCollateFn"]

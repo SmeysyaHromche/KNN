@@ -19,10 +19,10 @@ class OcrDataset(Dataset):
         path_to_db (str): Path to the LMDB database containing image bytes.
         path_to_meta_db (str): Path to the LMDB database containing metadata (key-label pairs).
     """
-    def __init__(self, path_to_db: str, path_to_meta_db: str, transform=None):
+    def __init__(self, path_to_db: str, path_to_meta_db: str):
         self.path_to_db = path_to_db
         self.path_to_meta_db = path_to_meta_db
-        self.transform = transform or transforms.ToTensor()
+        self.transform = transforms.ToTensor()
 
         self._data_db = None
         self._meta_db = None
@@ -112,7 +112,7 @@ class OcrDataset(Dataset):
             raise ValueError("Bytes data cannot be None")
 
         string_data = bytes_data.decode("utf-8")
-        parts = string_data.split("\t", maxsplit=1)
+        parts = string_data.split(" ", maxsplit=1)
         if len(parts) != 2:
             raise ValueError(f"Malformed metadata record: {string_data!r}")
         return parts[0], parts[1]

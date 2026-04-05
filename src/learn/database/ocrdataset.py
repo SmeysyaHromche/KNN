@@ -1,17 +1,28 @@
+import io
 import lmdb
+from PIL import Image
+from torch import Tensor
 from torch.utils.data import Dataset
+import torchvision.transforms as transforms
 
 
 class OcrDataset(Dataset):
     """
     PyTorch Dataset for OCR data stored in LMDB format.
+    
+    Behavior:
+        - Each sample consists of an image and its corresponding label.
+        - Images are stored as bytes in one LMDB database, and metadata (key-label pairs) are stored in another LMDB database.
+        - The dataset lazily loads images and labels.
+    
     Args:
         path_to_db (str): Path to the LMDB database containing image bytes.
         path_to_meta_db (str): Path to the LMDB database containing metadata (key-label pairs).
     """
-    def __init__(self, path_to_db: str, path_to_meta_db: str):
+    def __init__(self, path_to_db: str, path_to_meta_db: str, transform=None):
         self.path_to_db = path_to_db
         self.path_to_meta_db = path_to_meta_db
+        self.transform = transform or transforms.ToTensor()
 
         self._data_db = None
         self._meta_db = None
@@ -19,106 +30,155 @@ class OcrDataset(Dataset):
 
         self._init_length()
 
-    """
-    Open an LMDB database with optimal settings for read-only access.
-    Args:
-        path (str): Path to the LMDB database.
-    Returns:
-        lmdb.Environment: The opened LMDB environment.
-    """
-    def _open_db(self, path: str):
+    def _open_db(self, path: str) -> lmdb.Environment:
+        """
+        Open an LMDB database with optimal settings for read-only access.
+        Args:
+            path (str): Path to the LMDB database.
+        Returns:
+            lmdb.Environment: The opened LMDB environment.
+        """
         return lmdb.open(
             path,
             readonly=True,
             lock=False,
             readahead=False,
-            meminit=False
+            meminit=False,
         )
 
-    """
-    Get the data LMDB environment, opening it if it hasn't been opened yet.
-    Returns:
-        lmdb.Environment: The data LMDB environment.
-    """
-    def _get_data_db(self):
+    def _get_data_db(self) -> lmdb.Environment:
+        """
+        Get the data LMDB environment, opening it if it hasn't been opened yet.
+        Returns:
+            lmdb.Environment: The data LMDB environment.
+        """
         if self._data_db is None:
             self._data_db = self._open_db(self.path_to_db)
         return self._data_db
-    """
-    Get the metadata LMDB environment, opening it if it hasn't been opened yet
-    Returns:
-        lmdb.Environment: The metadata LMDB environment.
-    """
-    def _get_meta_db(self):
+
+    def _get_meta_db(self) -> lmdb.Environment:
+        """
+        Get the metadata LMDB environment, opening it if it hasn't been opened yet
+        Returns:
+            lmdb.Environment: The metadata LMDB environment.
+        """
         if self._meta_db is None:
             self._meta_db = self._open_db(self.path_to_meta_db)
         return self._meta_db
 
-    """
-    Get length of the dataset.
-    """
-    def _init_length(self):
+
+    def _init_length(self) -> None:
+        """
+        Get length of the dataset.
+        """
         env = self._open_db(self.path_to_meta_db)
         try:
             with env.begin() as txn:
                 self._length = txn.stat()["entries"]
         finally:
             env.close()
-
-    """
-    Close any open LMDB environments to free resources.
-    """
-    def close_resources(self):
+    
+    def close_resources(self) -> None:
+        """
+        Close any open LMDB environments to free resources.
+        """
         if self._data_db is not None:
             self._data_db.close()
             self._data_db = None
-
         if self._meta_db is not None:
             self._meta_db.close()
             self._meta_db = None
 
-    
-    """
-    Retrieve a value-label pair from the dataset based on the index.
-    Args:
-        idx (int): The index of the sample to retrieve.
-    Returns:
-        tuple: A tuple containing the image bytes and the corresponding label.
-    """
-    def get_from_db(self, db, key: bytes):
+    def _get_from_db(self, db, key: bytes) -> bytes | None:
+        """
+        Retrieve a value-label pair from the dataset based on the index.
+        Args:
+            idx (int): The index of the sample to retrieve.
+        Returns:
+            tuple: A tuple containing the image bytes and the corresponding label.
+        """
         with db.begin() as txn:
             return txn.get(key)
 
-    """
-    Convert bytes data from the metadata LMDB into a key-label pair.
-    Args:        
-        bytes_data (bytes): The raw bytes data retrieved from the metadata LMDB.
-    Returns:
-        tuple: A tuple containing the key (str) and label (str).
-    """
-    def bytes_to_key_label_pair(self, bytes_data):
+    def _bytes_to_key_label_pair(self, bytes_data: bytes) -> tuple[str, str]:
+        """
+        Convert bytes data from the metadata LMDB into a key-label pair.
+        Args:        
+            bytes_data (bytes): The raw bytes data retrieved from the metadata LMDB.
+        Returns:
+            tuple: A tuple containing the key (str) and label (str).
+        """
         if bytes_data is None:
-            return None, None
+            raise ValueError("Bytes data cannot be None")
 
         string_data = bytes_data.decode("utf-8")
-        key, label = string_data.split("\t", maxsplit=1)
-        return key, label
+        parts = string_data.split("\t", maxsplit=1)
+        if len(parts) != 2:
+            raise ValueError(f"Malformed metadata record: {string_data!r}")
+        return parts[0], parts[1]
 
-    def __len__(self):
-        return self._length
+    def _get_img_bytes_and_label(self, idx: int) -> tuple[bytes, str]:
+        """
+        Get the image bytes and label for a given index.
+        Args:
+            idx (int): The index of the sample to retrieve.
+        Returns:
+            tuple: A tuple containing the image bytes and the corresponding label.
+        """
+        if idx < 0 or idx >= self._length:
+            raise IndexError(f"Index out of bounds: {idx}")
 
-    def __getitem__(self, idx):
         meta_db = self._get_meta_db()
         data_db = self._get_data_db()
 
-        meta_bytes = self.get_from_db(meta_db, str(idx).encode("utf-8"))
-        key, label = self.bytes_to_key_label_pair(meta_bytes)
+        meta_bytes = self._get_from_db(meta_db, str(idx).encode("utf-8"))
+        if meta_bytes is None:
+            raise KeyError(f"Metadata not found for idx={idx}")
 
-        if key is None:
-            raise IndexError(f"Metadata not found for idx={idx}")
+        key, label = self._bytes_to_key_label_pair(meta_bytes)
+        if not key:
+            raise ValueError(f"Empty key for idx={idx}")
 
-        value = self.get_from_db(data_db, key.encode("utf-8"))
-        if value is None:
+        img_bytes = self._get_from_db(data_db, key.encode("utf-8"))
+        if img_bytes is None:
             raise KeyError(f"Image bytes not found for key={key!r}")
 
-        return value, label
+        return img_bytes, label
+
+    def get_img_tensor_from_img_bytes(self, img_bytes: bytes) -> Tensor:
+        """
+        Convert raw image bytes into a tensor using PIL and torchvision transforms.
+        Args:
+            img_bytes (bytes): The raw image bytes.
+        Returns:
+            torch.Tensor: The converted image tensor.
+        """
+        if img_bytes is None:
+            raise ValueError("Image bytes cannot be None")
+
+        try:
+            image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        except Exception as e:
+            raise ValueError(f"Failed to decode image bytes: {e}") from e
+
+        return self.transform(image)
+
+    def __len__(self) -> int:
+        """
+        Get the length of the dataset.
+        Returns:
+            int: The number of samples in the dataset.
+        """
+        return self._length
+
+    def __getitem__(self, idx: int) -> tuple[Tensor, str]:
+        """
+        Get a sample from the dataset at the specified index.
+        Args:
+            idx (int): The index of the sample to retrieve.
+        Returns:
+            tuple: A tuple containing the image tensor and the corresponding label.
+        """
+        img_bytes, label = self._get_img_bytes_and_label(idx)
+        img_tensor = self.get_img_tensor_from_img_bytes(img_bytes)
+        return img_tensor, label

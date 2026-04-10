@@ -1,0 +1,1 @@
+To run `train.py`, run this from the project root: `python3 -m src.learn.train`

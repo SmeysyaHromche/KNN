@@ -2,7 +2,7 @@ import random
 import numpy as np
 import cv2 as cv
 
-from learn.augmentations.base import Transform
+from src.learn.augmentations.base import Transform
 
 
 class RandomMorphology(Transform):

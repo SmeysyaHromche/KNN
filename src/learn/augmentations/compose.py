@@ -1,5 +1,5 @@
 import numpy as np
-from src.learn.augmentations.base import Transform
+from .base import Transform
 
 
 class Compose:

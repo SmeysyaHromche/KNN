@@ -4,19 +4,14 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from src.learn.augmentations.color import RandomBrightness, RandomContrast
-from src.learn.augmentations.compose import Compose
-from src.learn.augmentations.gaussian_blur import GaussianBlur
-from src.learn.augmentations.gaussian_noise import GaussianNoise
-from src.learn.augmentations.geometry import ElasticTransform, RandomSkew
-from src.learn.augmentations.morph_ops import RandomMorphology
+from learn.augmentations import RandomBrightness, RandomContrast, Compose, GaussianBlur, GaussianNoise, ElasticTransform, RandomSkew, RandomMorphology
 
-from src.common.tokenizer import Tokenizer
+from common.tokenizer import Tokenizer
 
-from src.learn.components.swin_feature_extractor import SwinFeatureExtractor
+from learn.components.swin_feature_extractor import SwinFeatureExtractor
 
-from src.learn.database.ocrcollatefn import OcrCollateFn
-from src.learn.database.ocrdataset import OcrDataset
+from learn.database.ocrcollatefn import OcrCollateFn
+from learn.database.ocrdataset import OcrDataset
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

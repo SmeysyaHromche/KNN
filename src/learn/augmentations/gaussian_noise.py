@@ -1,6 +1,6 @@
 import numpy as np
 
-from augmentations.base import Transform
+from learn.augmentations.base import Transform
 
 
 class GaussianNoise(Transform):

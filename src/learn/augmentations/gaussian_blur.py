@@ -2,7 +2,7 @@ import cv2 as cv
 import random
 import numpy as np
 
-from augmentations.base import Transform
+from learn.augmentations.base import Transform
 
 class GaussianBlur(Transform):
     """

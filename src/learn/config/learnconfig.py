@@ -22,6 +22,7 @@ class LearnModelConfig(BaseModel):
     dim_feedforward: int
     dropout: float
     max_seq_len: int
+    is_pretrain_swin: bool
 
 
 class LearnConfig(BaseModel):

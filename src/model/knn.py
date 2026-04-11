@@ -29,7 +29,7 @@ class Knn(nn.Module):
         pad_token_id: int,
         bos_token_id: int,
         eos_token_id: int,
-        is_pretrained: bool = True,
+        is_pretrain_swin: bool = True,
         d_model: int = 512,
         nhead: int = 8,
         num_layers: int = 6,
@@ -39,7 +39,7 @@ class Knn(nn.Module):
     ):
         super().__init__()
 
-        self.visual_tokenizer = VisualTokenizer(is_pretrained=is_pretrained)
+        self.visual_tokenizer = VisualTokenizer(is_pretrained=is_pretrain_swin)
 
         self.decoder = DecoderOnly(
             vocab_size=vocab_size,

@@ -11,6 +11,8 @@ class Tokenizer:
         with open(vocabulary_file, "r", encoding="utf-8") as f:
             self.tokens = [line.rstrip("\n") for line in f]
 
+        self.vocab_size = sum(1 for _ in self.tokens)
+
         self.token_to_id = {t: i for i, t in enumerate(self.tokens)}
         self.id_to_token = {i: t for i, t in enumerate(self.tokens)}
 
@@ -54,3 +56,12 @@ class Tokenizer:
             tokens.append(self.id_to_token[t])
 
         return "".join(tokens)
+    
+    def get_vocab_size(self) -> int:
+        """
+        Getter method for the size of the used vocabulary (how many characters + special
+        transformer tokens are in the vocabulary).
+
+        :returns: The size of the vocabulary
+        """
+        return self.vocab_size

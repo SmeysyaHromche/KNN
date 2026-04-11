@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torchvision.models import swin_v2_t, Swin_T_Weights
+from torchvision.models import swin_v2_t, Swin_V2_T_Weights
 
 
 class VisualTokenizer(nn.Module):
@@ -26,7 +26,7 @@ class VisualTokenizer(nn.Module):
     def __init__(self, is_pretrained: bool = True):
         super().__init__()
         
-        _weights = Swin_T_Weights.DEFAULT if is_pretrained else None
+        _weights = Swin_V2_T_Weights.DEFAULT if is_pretrained else None
         _vision_model = swin_v2_t(weights=_weights)
 
         self._feature_extractor = _vision_model.features

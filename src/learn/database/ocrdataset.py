@@ -1,5 +1,6 @@
 import io
 import lmdb
+import numpy as np
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
@@ -18,11 +19,13 @@ class OcrDataset(Dataset):
     Args:
         path_to_db (str): Path to the LMDB database containing image bytes.
         path_to_meta_db (str): Path to the LMDB database containing metadata (key-label pairs).
+        transform (callable, optional): Optional transform augmentations to apply to the images.
     """
-    def __init__(self, path_to_db: str, path_to_meta_db: str):
+    def __init__(self, path_to_db: str, path_to_meta_db: str, transform=None):
         self.path_to_db = path_to_db
         self.path_to_meta_db = path_to_meta_db
-        self.transform = transforms.ToTensor()
+        # If no transformations are passed, convert it just to Tensor
+        self.transform = transform if transform is not None else transforms.ToTensor()
 
         self._data_db = None
         self._meta_db = None
@@ -144,6 +147,20 @@ class OcrDataset(Dataset):
             raise KeyError(f"Image bytes not found for key={key!r}")
 
         return img_bytes, label
+    
+    def _bytes_to_numpy_image(self, img_bytes: bytes) -> np.ndarray:
+        """
+        Convert image bytes to a NumPy array (H, W, C) in RGB order.
+        Args:
+            img_bytes (bytes): The raw image bytes.
+        Returns:
+            np.ndarray: The converted NumPy array.
+        """
+        if img_bytes is None:
+            raise ValueError("Image bytes cannot be None")
+
+        image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        return np.array(image)
 
     def get_img_tensor_from_img_bytes(self, img_bytes: bytes) -> Tensor:
         """
@@ -156,12 +173,17 @@ class OcrDataset(Dataset):
         if img_bytes is None:
             raise ValueError("Image bytes cannot be None")
 
-        try:
-            image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-        except Exception as e:
-            raise ValueError(f"Failed to decode image bytes: {e}") from e
+        image_np = self._bytes_to_numpy_image(img_bytes)
+        
+        # Apply augmentations (OpenCV or NumPy based)
+        if self.transform:
+            image_np = self.transform(image_np)
 
-        return self.transform(image)
+        # Ensure tensor conversion
+        if not isinstance(image_np, Tensor):
+            image_np = transforms.ToTensor()(image_np)
+
+        return image_np
 
     def __len__(self) -> int:
         """

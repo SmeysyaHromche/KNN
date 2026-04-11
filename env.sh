@@ -7,11 +7,13 @@ show_help() {
     echo "Usage: $0 [OPTION]"
     echo ""
     echo "Options:"
-    echo "  -c, --create      Create environment if it does not exist"
-    echo "  -r, --recreate    Recreate environment from scratch"
-    echo "  -d, --delete      Delete environment"
-    echo "  -a, --activate    Activate environment (must be sourced)"
-    echo "  -h, --help        Show this help message"
+    echo "  -c, --create         Create environment if it does not exist"
+    echo "  -r, --recreate       Recreate environment from scratch"
+    echo "  -d, --delete         Delete environment"
+    echo "  -a, --activate       Activate environment (must be sourced)"
+    echo "  -e, --extra NAME     Install optional dependency group into existing environment"
+    echo "                       Example: $0 --extra dev"
+    echo "  -h, --help           Show this help message"
 }
 
 safe_return() {
@@ -25,6 +27,34 @@ install_project() {
     else
         echo "No pyproject.toml found, skipping install."
     fi
+}
+
+install_extra() {
+    EXTRA_NAME="$1"
+
+    if [ -z "$EXTRA_NAME" ]; then
+        echo "Missing extra name."
+        echo "Example: $0 --extra dev"
+        safe_return 1
+    fi
+
+    if [ ! -d "$ENV_DIR" ]; then
+        echo "Environment does not exist. Create it first."
+        safe_return 1
+    fi
+
+    if [ ! -f "pyproject.toml" ]; then
+        echo "No pyproject.toml found."
+        safe_return 1
+    fi
+
+    echo "Activating environment..."
+    . "$ENV_DIR/bin/activate" || safe_return 1
+
+    echo "Installing optional dependency group: [$EXTRA_NAME]"
+    pip install -e ".[${EXTRA_NAME}]" || safe_return 1
+
+    echo "Extra dependencies installed."
 }
 
 create_env() {
@@ -77,6 +107,11 @@ fi
 
 case "$1" in
     -c|--create)
+        if [ $# -ne 1 ]; then
+            echo "Option $1 does not accept additional arguments."
+            safe_return 1
+        fi
+
         if [ -d "$ENV_DIR" ]; then
             echo "Environment already exists. Doing nothing."
         else
@@ -84,13 +119,32 @@ case "$1" in
         fi
         ;;
     -r|--recreate)
+        if [ $# -ne 1 ]; then
+            echo "Option $1 does not accept additional arguments."
+            safe_return 1
+        fi
         recreate_env
         ;;
     -d|--delete)
+        if [ $# -ne 1 ]; then
+            echo "Option $1 does not accept additional arguments."
+            safe_return 1
+        fi
         delete_env
         ;;
     -a|--activate)
+        if [ $# -ne 1 ]; then
+            echo "Option $1 does not accept additional arguments."
+            safe_return 1
+        fi
         activate_env
+        ;;
+    -e|--extra)
+        if [ $# -ne 2 ]; then
+            echo "Usage: $0 --extra NAME"
+            safe_return 1
+        fi
+        install_extra "$2"
         ;;
     -h|--help)
         show_help

@@ -53,16 +53,9 @@ class DecoderOnly(nn.Module):
         self.max_seq_len = max_seq_len
         self.visual_token_dim = visual_token_dim
 
-        # project image tokens [B, N_img, 768] ->  to model dim [B, N_img, d_model]
         self.visual_proj = nn.Linear(visual_token_dim, d_model)
-
-        # text token embeddings
         self.token_embed = nn.Embedding(num_embeddings=vocab_size, embedding_dim=d_model, padding_idx=pad_token_id)
-
-        # positional embeddings for whole concatenated sequence [max_len, d_model]
         self.pos_embed = nn.Embedding(max_seq_len, d_model)
-
-        # transformer encoder with causal self-attention
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
             nhead=nhead,
@@ -74,9 +67,8 @@ class DecoderOnly(nn.Module):
         )
         self.transformer = nn.TransformerEncoder(encoder_layer=encoder_layer, num_layers=num_layers)
 
-        # post transformer processing
         self.norm = nn.LayerNorm(d_model)
-        self.l_logits = nn.Linear(d_model, vocab_size) # [B, T, d_model] -> [B, T, vocab_size]
+        self.l_logits = nn.Linear(d_model, vocab_size)
 
     @staticmethod
     def build_causal_mask(seq_len: int, device: torch.device) -> torch.Tensor:
@@ -84,7 +76,6 @@ class DecoderOnly(nn.Module):
         Returns attention mask of shape [seq, seq].
         True means attention is forbidden.
         """
-        # up right tokens in matrix is shadow
         return torch.triu(torch.ones(seq_len, seq_len, dtype=torch.bool, device=device), diagonal=1)
 
     def forward(self, image_tokens: torch.Tensor, text_tokens: torch.Tensor) -> torch.Tensor:
@@ -111,46 +102,33 @@ class DecoderOnly(nn.Module):
         if total_len > self.max_seq_len:
             raise ValueError(f"Total sequence length {total_len} exceeds max_seq_len={self.max_seq_len}")
 
-        # 1. trasnform visual prefix to model dimension
-        visual_emb = self.visual_proj(image_tokens)  # [B, N_img, d_model]
+        visual_emb = self.visual_proj(image_tokens)
 
-        # 2. embedding for text prefix
-        text_emb = self.token_embed(text_tokens)     # [B, T, d_model]
+        text_emb = self.token_embed(text_tokens)
 
-        # 3. concatenate: [image_prefix] + [text_prefix]
-        x = torch.cat([visual_emb, text_emb], dim=1)  # [B, N_img + T, d_model] !!! N_img + T = seq
+        x = torch.cat([visual_emb, text_emb], dim=1)
 
-        # 4. add positional embeddings
-        positions = torch.arange(total_len, device=x.device).unsqueeze(0)  # [1, seq] with [0, 1, 2, ..., seq - 1]
+        positions = torch.arange(total_len, device=x.device).unsqueeze(0)
         x = x + self.pos_embed(positions)
 
-        # 5. causal mask
-        causal_mask = self.build_causal_mask(total_len, x.device)  # [seq, seq]
+        causal_mask = self.build_causal_mask(total_len, x.device)
 
-        # 6. padding mask
-        # uncommit image tokens from masking => False
         image_padding_mask = torch.zeros(batch_size, n_img, dtype=torch.bool, device=x.device)
 
-        # text pad positions => True
         text_padding_mask = (text_tokens == self.pad_token_id)
 
-        key_padding_mask = torch.cat([image_padding_mask, text_padding_mask], dim=1)  # [B, L]
+        key_padding_mask = torch.cat([image_padding_mask, text_padding_mask], dim=1)
 
-        # 7. transformer
         x = self.transformer(src=x, mask=causal_mask, src_key_padding_mask=key_padding_mask,)
 
         x = self.norm(x)
 
-        # 8. keep only text positions for seq modeling
-        text_hidden = x[:, n_img:, :]  # [B, T, d_model]
-        return self.l_logits(text_hidden)  # [B, T, vocab_size]
+        text_hidden = x[:, n_img:, :]
+
+        return self.l_logits(text_hidden)
 
     @torch.no_grad()
-    def generate(
-        self,
-        image_tokens: torch.Tensor,
-        max_new_tokens: int = 128,
-    ) -> torch.Tensor:
+    def generate(self, image_tokens: torch.Tensor, max_new_tokens: int = 128) -> torch.Tensor:
         """
         Greedy autoregressive generation.
 
@@ -173,12 +151,10 @@ class DecoderOnly(nn.Module):
         finished = torch.zeros(batch_size, dtype=torch.bool, device=image_tokens.device)
 
         for _ in range(max_new_tokens):
-            # [B, T, vocab_size]
             logits = self.forward(image_tokens=image_tokens, text_tokens=generated,)
 
-            # [B, vocab_size]
             next_token_logits = logits[:, -1, :]
-            # [B, 1] give token with max prob in vocab
+            
             next_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)
 
             generated = torch.cat([generated, next_token], dim=1)

@@ -95,8 +95,8 @@ def test_decoder_generate_shape():
     image_tokens = torch.randn(2, 16, 768)
     generated = model.generate(image_tokens, max_new_tokens=10)
 
-    assert generated.ndim == 2
-    assert generated.shape[0] == 2
+    assert generated.ndim == 2      # [B, T]
+    assert generated.shape[0] == 2  # 2 batches
     assert generated.shape[1] >= 1  # min len of seq
     assert generated.shape[1] <= 11  # thresshold under max seq len
-    assert torch.all(generated[:, 0] == bos_token_id) # first ia bos always
+    assert torch.all(generated[:, 0] == bos_token_id) # first is bos always

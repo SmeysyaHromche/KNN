@@ -56,8 +56,8 @@ def test_full_model_generate_shape():
     images = make_mock_images(batch_size=2, h=224, w=224)
     generated = model.generate(images, max_new_tokens=8)
 
-    assert generated.ndim == 2
-    assert generated.shape[0] == 2
-    assert generated.shape[1] >= 1
-    assert generated.shape[1] <= 9
-    assert torch.all(generated[:, 0] == bos_token_id)
+    assert generated.ndim == 2  # [B, T]
+    assert generated.shape[0] == 2  # 2 batches
+    assert generated.shape[1] >= 1  # exist some text
+    assert generated.shape[1] <= 9  # trh
+    assert torch.all(generated[:, 0] == bos_token_id)  # first is bos always

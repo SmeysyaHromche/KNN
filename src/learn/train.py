@@ -33,9 +33,9 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 VOCABULARY_FILE = "src/common/vocabulary.txt"
 tokenizer = Tokenizer(Path(VOCABULARY_FILE))
 
-PAD_IDX = tokenizer.encode(["<pad>"])[0]
-BOS_IDX = tokenizer.encode(["<bos>"])[0]
-EOS_IDX = tokenizer.encode(["<eos>"])[0]
+PAD_IDX = tokenizer.encode_special_token("<pad>")
+BOS_IDX = tokenizer.encode_special_token("<bos>")
+EOS_IDX = tokenizer.encode_special_token("<eos>")
 
 # Timestamp is created to differentiate models from multiple runs
 timestamp = time.strftime("%d%m%Y_%H%M%S")

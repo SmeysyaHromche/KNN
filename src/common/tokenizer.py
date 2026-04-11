@@ -24,13 +24,33 @@ class Tokenizer:
         :returns: Encoded list
         """
         return [self.token_to_id[t] for t in text]
+    
+    def encode_special_token(self, token: str) -> int:
+        """
+        Encode special token needed by the transformer (e.g. '<bos>') into an id.
+        If the special token was encoded with the `encode()` function, it
+        would return the ids for each character ('<' -> id1, 'b' -> id2, ...).
 
-    def decode(self, ids: list[int]) -> str:
+        :param token: Special token to encode
+        :returns: Encoded special token
+        """
+        return self.token_to_id[token]
+
+    def decode(self, ids: list[int], remove_after_eos: bool = True) -> str:
         """
         Decode the list of indexes back to a textual form.
 
         :param ids: List of the indices of each character
+        :param remove_after_eos: When set to 'True' the decoding will remove everything
+            that comes after '<eos>' (End Of Sequence) including the '<eos>' token.
         :returns: Decoded string
         """
-        tokens = [self.id_to_token[t] for t in ids]
+        tokens = []
+        eos = self.encode_special_token("<eos>")
+
+        for t in ids:
+            if remove_after_eos and t == eos:
+                break
+            tokens.append(self.id_to_token[t])
+
         return "".join(tokens)

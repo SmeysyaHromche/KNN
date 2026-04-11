@@ -5,6 +5,7 @@ class LearnDataConfig(BaseModel):
     path_to_vld_meta_db: str
     path_to_tst_meta_db: str
     path_to_db: str
+    path_to_vocabulary_file: str
     image_target_height: int
     batch_size: int
 

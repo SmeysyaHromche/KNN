@@ -4,6 +4,7 @@
         "path_to_vld_meta_db": "",
         "path_to_tst_meta_db": "",    
         "path_to_db": "",
+        "path_to_vocabulary_file": "",
         "image_target_height": 32,
         "batch_size": 64
     },

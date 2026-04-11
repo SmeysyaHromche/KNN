@@ -1,0 +1,1 @@
+1. if len of input img make degradation of max_gen_len?

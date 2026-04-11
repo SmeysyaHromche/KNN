@@ -77,7 +77,7 @@ class OcrDataset(Dataset):
         env = self._open_db(self.path_to_meta_db)
         try:
             with env.begin() as txn:
-                self._length = txn.stat()["entries"]
+                self._length = txn.stat()["entries"] - 1
         finally:
             env.close()
     

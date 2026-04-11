@@ -10,7 +10,8 @@
     "train":{
         "num_of_epochs": 5,
         "save_model_per_epoch": false,
-        "output_model_dir": ""
+        "output_model_dir": "",
+        "optimizer_lr": 1e-4
     },
     "model":{
         "d_model": 512,

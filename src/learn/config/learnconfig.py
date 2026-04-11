@@ -13,6 +13,7 @@ class LearnTrainConfig(BaseModel):
     num_of_epochs: int
     save_model_per_epoch: bool
     output_model_dir: str
+    optimizer_lr: float
 
 
 class LearnModelConfig(BaseModel):

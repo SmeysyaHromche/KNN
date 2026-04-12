@@ -200,7 +200,7 @@ if __name__ == "__main__":
                 metrics.update(predicted_text, ground_truth)
 
                 # Print the information to the console and to the output file
-                print_progress_info(metrics, batch_idx, num_of_batches)
+                print_progress_info(metrics, batch_idx + 1, num_of_batches)
                 output_file.write(f"Predicted: {predicted_text} | Target: {ground_truth}\n")
             
 

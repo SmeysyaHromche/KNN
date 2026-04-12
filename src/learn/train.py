@@ -45,13 +45,13 @@ if __name__ == "__main__":
 
     # Augmentations are set to not be so aggressive for now
     augmentations = Compose([
-        RandomMorphology(probability=0.3, kernel_size_range=(1, 3)),
-        GaussianBlur(probability=0.2, kernel_size_range=(5, 9)),
-        GaussianNoise(probability=0.2, mean=0, std=1),
+        # RandomMorphology(probability=0.3, kernel_size_range=(1, 3)),
+        GaussianBlur(probability=0.2, kernel_size_range=(1, 3)),
+        GaussianNoise(probability=0.2, mean=0, std=3),
         RandomSkew(probability=0.3, skew_range=(-0.5, 0.5)),
-        ElasticTransform(probability=0.2),
+        ElasticTransform(probability=0.1, alpha=2, sigma=1),
         RandomBrightness(probability=0.3, brightness=30),
-        RandomContrast(probability=0.3, contrast=30),
+        RandomContrast(probability=0.3, contrast=10),
     ])
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

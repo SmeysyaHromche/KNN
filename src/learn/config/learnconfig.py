@@ -12,9 +12,12 @@ class LearnDataConfig(BaseModel):
 
 class LearnTrainConfig(BaseModel):
     num_of_epochs: int
+    unfreeze_swin_epoch: int
+    unfreeze_swin_norms_epoch: int
     save_model_per_epoch: bool
     output_model_dir: str
     optimizer_lr: float
+    swin_optimizer_lr: float
 
 
 class LearnModelConfig(BaseModel):

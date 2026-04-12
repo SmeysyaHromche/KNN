@@ -1,18 +1,21 @@
 {
     "data":{
-        "path_to_trn_meta_db": "",
+        "path_to_trn_meta_db": ".data/lines_split_train.lmdb",
         "path_to_vld_meta_db": "",
         "path_to_tst_meta_db": "",    
-        "path_to_db": "",
-        "path_to_vocabulary_file": "",
+        "path_to_db": ".data/lines_48-1.15.lmdb",
+        "path_to_vocabulary_file": "src/common/vocabulary.txt",
         "image_target_height": 32,
         "batch_size": 64
     },
     "train":{
-        "num_of_epochs": 5,
-        "save_model_per_epoch": false,
-        "output_model_dir": "",
-        "optimizer_lr": 1e-4
+        "num_of_epochs": 10,
+        "unfreeze_swin_epoch": 3,
+        "unfreeze_swin_norms_epoch": 1,
+        "save_model_per_epoch": true,
+        "output_model_dir": "src/learn/output",
+        "optimizer_lr": 1e-4,
+        "swin_optimizer_lr": 1e-5
     },
     "model":{
         "d_model": 512,

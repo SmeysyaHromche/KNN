@@ -38,6 +38,38 @@ timestamp = time.strftime("%d%m%Y_%H%M%S")
 MODEL_RUN_DIR = os.path.join(config.train.output_model_dir, timestamp)
 os.makedirs(MODEL_RUN_DIR, exist_ok=True)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#                 Helper functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def unfreeze_swin_stage3(model):
+    print("-> Unfreezing Swin stage 3")
+
+    layers = list(model.visual_tokenizer._feature_extractor)
+    stage3 = layers[-1]  # always last stage
+
+    for param in stage3.parameters():
+        param.requires_grad = True
+
+def unfreeze_norm_layers(model):
+    print("-> Unfreezing Swin norms")
+
+    # Unfreeze all LayerNorms inside transformer blocks
+    for name, param in model.visual_tokenizer.named_parameters():
+        if "norm" in name:
+            param.requires_grad = True
+
+    # Unfreeze final output norm
+    model.visual_tokenizer._norm.requires_grad_(True)
+
+def build_eos_mask(targets, eos_id, pad_id):
+    mask = targets != pad_id
+
+    eos_pos = (targets == eos_id).float().cumsum(dim=1)
+    mask = mask & (eos_pos <= 1)
+
+    return mask
+
 if __name__ == "__main__":
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #                   Augmentations
@@ -87,14 +119,37 @@ if __name__ == "__main__":
     #                       Loss
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    criterion = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.train.optimizer_lr)
+    # criterion = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+    optimizer = torch.optim.Adam([
+        {"params": model.decoder.parameters(), "lr": config.train.optimizer_lr},
+        # {"params": model.visual_tokenizer.parameters(), "lr": config.train.swin_optimizer_lr}
+    ])
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #                     Training
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     for epoch in range(config.train.num_of_epochs):
+        if epoch == config.train.unfreeze_swin_norms_epoch:
+            unfreeze_norm_layers(model)
+
+            # optimizer.add_param_group(
+            #     {"params": model.visual_tokenizer.parameters(), "lr": config.train.swin_optimizer_lr}
+            # )
+
+            trainable = [
+                p for p in model.visual_tokenizer.parameters()
+                if p.requires_grad
+            ]
+
+            optimizer.add_param_group({
+                "params": trainable,
+                "lr": config.train.swin_optimizer_lr
+            })
+
+        if epoch == config.train.unfreeze_swin_epoch:
+            unfreeze_swin_stage3(model)
+
         model.train()
         total_loss = 0.0
 
@@ -123,7 +178,13 @@ if __name__ == "__main__":
             target_output_flat = target_output.reshape(-1)      # [batch * sequence_len] - each element is the correct token ID for that position
 
             # Compute loss, ignoring PAD tokens
-            loss = criterion(logits_flat, target_output_flat)
+            # loss = criterion(logits_flat, target_output_flat)
+
+            loss_fn = torch.nn.CrossEntropyLoss(reduction="none", ignore_index=PAD_IDX)
+            loss_raw = loss_fn(logits_flat, target_output_flat)  # [N]
+            loss_mask = build_eos_mask(target_output, EOS_IDX, PAD_IDX).reshape(-1)
+            loss = (loss_raw * loss_mask).sum() / loss_mask.sum()
+
             total_loss += loss.item()
 
             # Print learning status each 10 batches (the line rewrites itself in the console)

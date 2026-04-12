@@ -1,0 +1,19 @@
+{
+    "data": {
+        "path_to_tst_meta_db": "",    
+        "path_to_db": "",
+        "path_to_vocabulary_file": "src/common/vocabulary.txt",
+        "image_target_height": 32,
+        "batch_size": 64
+    },
+    "model": {
+        "path_to_model": "",
+        "device": "cuda",
+        "is_pretrain_swin": true,
+        "max_seq_len": 1024,
+        "img_pad_value": 1.0
+    },
+    "output": {
+        "path_to_output_file": "src/evaluation/model_evaluation.txt"
+    }
+}

@@ -38,7 +38,7 @@ class Tokenizer:
         """
         return self.token_to_id[token]
 
-    def decode(self, ids: list[int], remove_after_eos: bool = True) -> str:
+    def decode(self, ids: list[int], remove_bos: bool = True, remove_after_eos: bool = True) -> str:
         """
         Decode the list of indexes back to a textual form.
 
@@ -49,8 +49,11 @@ class Tokenizer:
         """
         tokens = []
         eos = self.encode_special_token("<eos>")
+        bos = self.encode_special_token("<bos>")
 
         for t in ids:
+            if remove_bos and t == bos:
+                continue
             if remove_after_eos and t == eos:
                 break
             tokens.append(self.id_to_token[t])

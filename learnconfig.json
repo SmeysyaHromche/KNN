@@ -10,8 +10,8 @@
     },
     "train":{
         "num_of_epochs": 10,
-        "unfreeze_swin_epoch": 3,
-        "unfreeze_swin_norms_epoch": 1,
+        "unfreeze_swin_epoch": 4,
+        "unfreeze_swin_norms_epoch": 2,
         "save_model_per_epoch": true,
         "output_model_dir": "src/learn/output",
         "optimizer_lr": 1e-4,

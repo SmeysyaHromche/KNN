@@ -38,6 +38,9 @@ timestamp = time.strftime("%d%m%Y_%H%M%S")
 MODEL_RUN_DIR = os.path.join(config.train.output_model_dir, timestamp)
 os.makedirs(MODEL_RUN_DIR, exist_ok=True)
 
+# Loss function
+loss_fn = torch.nn.CrossEntropyLoss(reduction="none", ignore_index=PAD_IDX)
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #                 Helper functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -88,7 +91,7 @@ def run_epoch(model, loader, optimizer=None, epoch=None):
 
             # Encode each label into token IDs with BOS and EOS
             target_indices = [
-                torch.tensor([BOS_IDX] + tokenizer.encode(label) + [EOS_IDX])
+                torch.tensor([BOS_IDX] + tokenizer.encode(label) + [EOS_IDX], device=DEVICE)
                 for label in labels
             ]
 
@@ -109,7 +112,6 @@ def run_epoch(model, loader, optimizer=None, epoch=None):
             target_output_flat = target_output.reshape(-1)      # [batch * sequence_len] - each element is the correct token ID for that position
 
             # Compute loss, ignoring PAD tokens
-            loss_fn = torch.nn.CrossEntropyLoss(reduction="none", ignore_index=PAD_IDX)
             loss_raw = loss_fn(logits_flat, target_output_flat)
             loss_mask = build_eos_mask(target_output, EOS_IDX, PAD_IDX).reshape(-1)
             loss = (loss_raw * loss_mask).sum() / loss_mask.sum()
@@ -124,7 +126,7 @@ def run_epoch(model, loader, optimizer=None, epoch=None):
 
             # Print learning status each 10 batches (the line rewrites itself in the console)
             if is_training and batch_idx % 10 == 0:
-                print(f"[Epoch {epoch} | Batch {batch_idx+1}/{len(train_loader)} | Loss: {loss.item():.4f}]", end="\r", flush=True)
+                print(f"[Epoch {epoch} | Batch {batch_idx+1}/{len(loader)} | Loss: {loss.item():.4f}]", end="\r", flush=True)
 
     return total_loss / len(loader)
 
@@ -196,7 +198,7 @@ if __name__ == "__main__":
     #                     Training
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    for epoch in range(config.train.num_of_epochs):
+    for epoch in range(1, config.train.num_of_epochs + 1):
         if epoch == config.train.unfreeze_swin_norms_epoch:
             unfreeze_norm_layers(model)
 
@@ -218,10 +220,10 @@ if __name__ == "__main__":
             unfreeze_swin_stage3(model)        
 
         # Print progress info
-        train_loss = run_epoch(model, train_loader, optimizer=optimizer, epoch=epoch+1)
+        train_loss = run_epoch(model, train_loader, optimizer=optimizer, epoch=epoch)
         val_loss = run_epoch(model, val_loader)
 
-        print(f"Epoch {epoch+1}/{config.train.num_of_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+        print(f"Epoch {epoch}/{config.train.num_of_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
         # Save per-epoch checkpoint
         if config.train.save_model_per_epoch:

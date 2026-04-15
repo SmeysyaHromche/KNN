@@ -70,6 +70,64 @@ def build_eos_mask(targets, eos_id, pad_id):
 
     return mask
 
+def run_epoch(model, loader, optimizer=None, epoch=None):
+    is_training = optimizer is not None
+
+    if is_training:
+        model.train()
+    else:
+        model.eval()
+
+    total_loss = 0.0
+
+    context = torch.enable_grad() if is_training else torch.no_grad()
+
+    with context:
+        for batch_idx, (images, labels, _) in enumerate(loader):
+            images = images.to(DEVICE)
+
+            # Encode each label into token IDs with BOS and EOS
+            target_indices = [
+                torch.tensor([BOS_IDX] + tokenizer.encode(label) + [EOS_IDX])
+                for label in labels
+            ]
+
+            # Pad sequences with PAD in batch to the same length
+            target_indices = torch.nn.utils.rnn.pad_sequence(
+                target_indices, batch_first=True, padding_value=PAD_IDX
+            ).to(DEVICE)
+
+            # Teacher forcing
+            target_input = target_indices[:, :-1]   # Decoder input excludes last token (EOS)
+            target_output = target_indices[:, 1:]   # Decoder target excludes first token (BOS)
+
+            # Forward pass
+            logits = model(images, target_input)    # [batch, sequence_len, vocab_size]
+
+            # Flatten for cross-entropy loss
+            logits_flat = logits.reshape(-1, logits.size(-1))   # [batch * sequence_len, vocab_size] - cross-entropy expects [samples, num_of_classes]
+            target_output_flat = target_output.reshape(-1)      # [batch * sequence_len] - each element is the correct token ID for that position
+
+            # Compute loss, ignoring PAD tokens
+            loss_fn = torch.nn.CrossEntropyLoss(reduction="none", ignore_index=PAD_IDX)
+            loss_raw = loss_fn(logits_flat, target_output_flat)
+            loss_mask = build_eos_mask(target_output, EOS_IDX, PAD_IDX).reshape(-1)
+            loss = (loss_raw * loss_mask).sum() / loss_mask.sum()
+
+            # Backpropagation only if training (not on validation)
+            if is_training:
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+            total_loss += loss.item()
+
+            # Print learning status each 10 batches (the line rewrites itself in the console)
+            if is_training and batch_idx % 10 == 0:
+                print(f"[Epoch {epoch} | Batch {batch_idx+1}/{len(train_loader)} | Loss: {loss.item():.4f}]", end="\r", flush=True)
+
+    return total_loss / len(loader)
+
 if __name__ == "__main__":
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #                   Augmentations
@@ -98,6 +156,15 @@ if __name__ == "__main__":
 
     collate_fn = OcrCollateFn(target_height=config.data.image_target_height, pad_value=1.0)
     train_loader = DataLoader(dataset, batch_size=config.data.batch_size, shuffle=True, collate_fn=collate_fn)
+
+    # Validation dataset
+    val_dataset = OcrDataset(
+        path_to_db=config.data.path_to_db,
+        path_to_meta_db=config.data.path_to_vld_meta_db,
+        transform=None
+    )
+
+    val_loader = DataLoader(val_dataset, batch_size=config.data.batch_size, shuffle=False, collate_fn=collate_fn)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #                       Model
@@ -148,57 +215,13 @@ if __name__ == "__main__":
             })
 
         if epoch == config.train.unfreeze_swin_epoch:
-            unfreeze_swin_stage3(model)
-
-        model.train()
-        total_loss = 0.0
-
-        for batch_idx, (images, labels, _) in enumerate(train_loader):
-            images = images.to(DEVICE)
-
-            # Encode each label into token IDs with BOS and EOS
-            target_indices = [
-                torch.tensor([BOS_IDX] + tokenizer.encode(label) + [EOS_IDX]) for label in labels
-            ]
-
-            # Pad sequences with PAD in batch to the same length
-            target_indices = torch.nn.utils.rnn.pad_sequence(
-                target_indices, batch_first=True, padding_value=PAD_IDX
-            ).to(DEVICE)
-
-            # Teacher forcing
-            target_input = target_indices[:, :-1]   # Decoder input excludes last token (EOS)
-            target_output = target_indices[:, 1:]   # Decoder target excludes first token (BOS)
-
-            # Forward pass
-            logits = model(images, target_input)    # [batch, sequence_len, vocab_size]
-
-            # Flatten for cross-entropy loss
-            logits_flat = logits.reshape(-1, logits.size(-1))   # [batch * sequence_len, vocab_size] - cross-entropy expects [samples, num_of_classes]
-            target_output_flat = target_output.reshape(-1)      # [batch * sequence_len] - each element is the correct token ID for that position
-
-            # Compute loss, ignoring PAD tokens
-            # loss = criterion(logits_flat, target_output_flat)
-
-            loss_fn = torch.nn.CrossEntropyLoss(reduction="none", ignore_index=PAD_IDX)
-            loss_raw = loss_fn(logits_flat, target_output_flat)  # [N]
-            loss_mask = build_eos_mask(target_output, EOS_IDX, PAD_IDX).reshape(-1)
-            loss = (loss_raw * loss_mask).sum() / loss_mask.sum()
-
-            total_loss += loss.item()
-
-            # Print learning status each 10 batches (the line rewrites itself in the console)
-            if batch_idx % 10 == 0:
-                print(f"[Epoch {epoch} | Batch {batch_idx+1}/{len(train_loader)} | Loss: {loss.item():.4f}]", end="\r", flush=True)
-
-            # Backpropagation
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            unfreeze_swin_stage3(model)        
 
         # Print progress info
-        avg_loss = total_loss / len(train_loader)
-        print(f"Epoch {epoch}/{config.train.num_of_epochs}, Avg Loss: {avg_loss:.4f}")
+        train_loss = run_epoch(model, train_loader, optimizer=optimizer, epoch=epoch+1)
+        val_loss = run_epoch(model, val_loader)
+
+        print(f"Epoch {epoch+1}/{config.train.num_of_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
         # Save per-epoch checkpoint
         if config.train.save_model_per_epoch:
@@ -207,7 +230,8 @@ if __name__ == "__main__":
                 "epoch": epoch,
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
-                "loss": avg_loss,
+                "train_loss": train_loss,
+                "val_loss": val_loss,
             }, epoch_path)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -219,7 +243,8 @@ if __name__ == "__main__":
         "epoch": config.train.num_of_epochs,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
-        "loss": avg_loss,
+        "train_loss": train_loss,
+        "val_loss": val_loss,
     }, final_path)
 
     print(f"Final model saved to {final_path}")

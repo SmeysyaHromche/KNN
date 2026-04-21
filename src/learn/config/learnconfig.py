@@ -8,6 +8,8 @@ class LearnDataConfig(BaseModel):
     path_to_vocabulary_file: str
     image_target_height: int
     batch_size: int
+    num_workers_train: int
+    num_workers_validation: int
 
 
 class LearnTrainConfig(BaseModel):

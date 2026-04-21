@@ -157,7 +157,14 @@ if __name__ == "__main__":
     )
 
     collate_fn = OcrCollateFn(target_height=config.data.image_target_height, pad_value=1.0)
-    train_loader = DataLoader(dataset, batch_size=config.data.batch_size, shuffle=True, collate_fn=collate_fn, num_workers=4, pin_memory=True, persistent_workers=True)
+    train_loader = DataLoader(dataset,
+        batch_size=config.data.batch_size,
+        shuffle=True,
+        collate_fn=collate_fn,
+        num_workers=config.data.num_workers_train,
+        pin_memory=True,
+        persistent_workers=True
+    )
 
     # Validation dataset
     val_dataset = OcrDataset(
@@ -166,7 +173,14 @@ if __name__ == "__main__":
         transform=None
     )
 
-    val_loader = DataLoader(val_dataset, batch_size=config.data.batch_size, shuffle=False, collate_fn=collate_fn, num_workers=4, pin_memory=True, persistent_workers=True)
+    val_loader = DataLoader(val_dataset,
+        batch_size=config.data.batch_size,
+        shuffle=False,
+        collate_fn=collate_fn,
+        num_workers=config.data.num_workers_validation,
+        pin_memory=True,
+        persistent_workers=True
+    )
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #                       Model
@@ -177,7 +191,7 @@ if __name__ == "__main__":
         pad_token_id=PAD_IDX,
         bos_token_id=BOS_IDX,
         eos_token_id=EOS_IDX,
-        is_pretrain_swin=True
+        is_pretrain_swin=config.model.is_pretrain_swin
     ).to(DEVICE)
 
     # Freeze Swin backbone

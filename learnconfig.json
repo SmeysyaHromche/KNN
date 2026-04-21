@@ -6,7 +6,9 @@
         "path_to_db": ".data/lines_48-1.15.lmdb",
         "path_to_vocabulary_file": "src/common/vocabulary.txt",
         "image_target_height": 32,
-        "batch_size": 64
+        "batch_size": 64,
+        "num_workers_train": 1,
+        "num_workers_validation": 1
     },
     "train":{
         "num_of_epochs": 10,

@@ -157,7 +157,7 @@ if __name__ == "__main__":
     )
 
     collate_fn = OcrCollateFn(target_height=config.data.image_target_height, pad_value=1.0)
-    train_loader = DataLoader(dataset, batch_size=config.data.batch_size, shuffle=True, collate_fn=collate_fn)
+    train_loader = DataLoader(dataset, batch_size=config.data.batch_size, shuffle=True, collate_fn=collate_fn, num_workers=4, pin_memory=True, persistent_workers=True)
 
     # Validation dataset
     val_dataset = OcrDataset(
@@ -166,7 +166,7 @@ if __name__ == "__main__":
         transform=None
     )
 
-    val_loader = DataLoader(val_dataset, batch_size=config.data.batch_size, shuffle=False, collate_fn=collate_fn)
+    val_loader = DataLoader(val_dataset, batch_size=config.data.batch_size, shuffle=False, collate_fn=collate_fn, num_workers=4, pin_memory=True, persistent_workers=True)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #                       Model

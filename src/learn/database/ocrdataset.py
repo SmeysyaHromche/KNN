@@ -47,6 +47,8 @@ class OcrDataset(Dataset):
             lock=False,
             readahead=False,
             meminit=False,
+            max_readers=512,
+            subdir=True
         )
 
     def _get_data_db(self) -> lmdb.Environment:
@@ -204,3 +206,9 @@ class OcrDataset(Dataset):
         img_bytes, label = self._get_img_bytes_and_label(idx)
         img_tensor = self.get_img_tensor_from_img_bytes(img_bytes)
         return img_tensor, label
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state["_data_db"] = None
+        state["_meta_db"] = None
+        return state

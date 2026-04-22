@@ -205,6 +205,7 @@ if __name__ == "__main__":
     # criterion = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
     optimizer = torch.optim.Adam([
         {"params": model.decoder.parameters(), "lr": config.train.optimizer_lr},
+        {"params": model.visual_adapter.parameters(), "lr": config.train.optimizer_lr}
         # {"params": model.visual_tokenizer.parameters(), "lr": config.train.swin_optimizer_lr}
     ])
 

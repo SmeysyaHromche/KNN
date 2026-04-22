@@ -14,6 +14,7 @@
     1. `-N` is the name of the job
     1. `-l` is list of requirements
     1. `-q` is the name of the queue; use `gpu` for jobs that have walltime set in range `0 - 48:00:00` and `gpu_long` for jobs with `24:00:01 - 336:00:00`
+    1. change the `DATADIR` variable to match the cloned repository path
 1. Once you have everything configured, you can submit the batch job with `qsub train_job.sh`
 1. To monitor the job, you can check the status from the terminal with `qstat <id_ob_job>`, for more information you can use the `-f` option. Or you can use the [metacentrum website](#metacentrum).
 

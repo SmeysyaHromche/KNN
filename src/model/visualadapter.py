@@ -3,7 +3,7 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 
-class VisualAdapter(nn.Modul):
+class VisualAdapter(nn.Module):
 
     def __init__(
             self, 

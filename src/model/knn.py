@@ -63,7 +63,6 @@ class Knn(nn.Module):
             dim_feedforward = dim_feedforward,
             dropout = dropout,
             max_seq_len = max_seq_len,
-            visual_token_dim = VisualTokenizer.VISUAL_TOKEN_DIM,
         )
 
     def forward(self, images: torch.Tensor, text_tokens: torch.Tensor) -> torch.Tensor:

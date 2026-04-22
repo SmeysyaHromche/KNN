@@ -60,6 +60,11 @@ install_extra() {
     echo "Extra dependencies installed."
 }
 
+remove_torch() {
+    echo "Removing old PyTorch packages..."
+    pip uninstall -y torch torchvision torchaudio >/dev/null 2>&1
+}
+
 install_torch() {
     TORCH_TYPE="$1"
 
@@ -76,6 +81,8 @@ install_torch() {
 
     echo "Activating environment..."
     . "$ENV_DIR/bin/activate" || safe_return 1
+
+    remove_torch
 
     echo "Installing PyTorch..."
 

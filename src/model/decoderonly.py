@@ -2,13 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class DecoderOnly(nn.Module):
+
+    NUM_OF_IMG_TOKENS = 128  # if max = 1024
+    MAX_SEQ_LEN = 1024
+    MODEL_DIMENSION = 512
+    
     """
     Decoder-only model based on tarnsformer encoder architecture.
 
     Works with visual tokens produced by VisualTokenizer:
-        image_tokens: [B, N_img, 768]
+        image_tokens: [B, N_img, d_model]
 
     The model builds a single autoregressive sequence:
         [image_tokens] + [text_tokens]
@@ -25,9 +29,9 @@ class DecoderOnly(nn.Module):
         num_layers (int): Number of transformer layers.
         dim_feedforward (int): Feedforward hidden size.
         dropout (float): Dropout probability.
+        img_prefix_len (int): Length of visual prefix.
         max_seq_len (int): Maximum total sequence length:
             N_img + N_txt <= max_seq_len.
-        visual_token_dim (int): Input dim of visual tokens.
     """
     def __init__(
         self,
@@ -35,114 +39,167 @@ class DecoderOnly(nn.Module):
         pad_token_id: int,
         bos_token_id: int,
         eos_token_id: int,
-        d_model: int = 512,
+        d_model: int = MODEL_DIMENSION,
         nhead: int = 8,
         num_layers: int = 6,
         dim_feedforward: int = 2048,
         dropout: float = 0.1,
-        max_seq_len: int = 1024,
-        visual_token_dim: int = 768,
+        img_prefix_len: int = NUM_OF_IMG_TOKENS,
+        max_seq_len: int = MAX_SEQ_LEN
     ):
         super().__init__()
+
+        if img_prefix_len >= max_seq_len :
+            raise ValueError(f"Error! The number of visual tokens ({img_prefix_len}) exceeds the limit for the line itself ({max_seq_len})")
 
         self.vocab_size = vocab_size
         self.pad_token_id = pad_token_id
         self.bos_token_id = bos_token_id
         self.eos_token_id = eos_token_id
         self.d_model = d_model
+        self.nhead = nhead
+        self.num_layers = num_layers
+        self.dim_feedforward = dim_feedforward
+        self.dropout = dropout
+        self.img_prefix_len = img_prefix_len
         self.max_seq_len = max_seq_len
-        self.visual_token_dim = visual_token_dim
-
-        # project image tokens [B, N_img, 768] ->  to model dim [B, N_img, d_model]
-        self.visual_proj = nn.Linear(visual_token_dim, d_model)
+        self.text_seq_len = self.max_seq_len - self.img_prefix_len
 
         # text token embeddings
-        self.token_embed = nn.Embedding(num_embeddings=vocab_size, embedding_dim=d_model, padding_idx=pad_token_id)
+        self.token_embed = nn.Embedding(
+            num_embeddings = self.vocab_size, 
+            embedding_dim = self.d_model, 
+            padding_idx = self.pad_token_id
+        )
 
-        # positional embeddings for whole concatenated sequence [max_len, d_model]
-        self.pos_embed = nn.Embedding(max_seq_len, d_model)
+        # typed embeddings (0 = img, 1 = text)
+        self.type_emb = nn.Embedding(num_embeddings = 2, embedding_dim = self.d_model)
+        # pos embedding based on token type
+        self.img_pos_emb = nn.Embedding(self.img_prefix_len, self.d_model)
+        self.txt_pos_emb = nn.Embedding(self.text_seq_len, self.d_model)
+        # embedding dropout
+        self.emd_drop = nn.Dropout(self.dropout)
 
         # transformer encoder with causal self-attention
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=nhead,
-            dim_feedforward=dim_feedforward,
-            dropout=dropout,
-            activation="gelu",
-            batch_first=True,
-            norm_first=True,
+            d_model = self.d_model,
+            nhead = self.nhead,
+            dim_feedforward = self.dim_feedforward,
+            dropout = self.dropout,
+            activation = "gelu",
+            batch_first = True,
+            norm_first = True,
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer=encoder_layer, num_layers=num_layers)
+        self.transformer = nn.TransformerEncoder(encoder_layer = encoder_layer, num_layers = self.num_layers)
 
         # post transformer processing
-        self.norm = nn.LayerNorm(d_model)
-        self.l_logits = nn.Linear(d_model, vocab_size) # [B, T, d_model] -> [B, T, vocab_size]
+        self.norm = nn.LayerNorm(normalized_shape = d_model)
+        self.l_logits = nn.Linear(in_features = d_model, out_features = vocab_size) # [B, T, d_model] -> [B, T, vocab_size]
 
     @staticmethod
     def build_causal_mask(seq_len: int, device: torch.device) -> torch.Tensor:
         """
         Returns attention mask of shape [seq, seq].
         True means attention is forbidden.
+
+        Args:
+            seq_len: expected length of full input
+            device: CPU/GPU
         """
         # up right tokens in matrix is shadow
         return torch.triu(torch.ones(seq_len, seq_len, dtype=torch.bool, device=device), diagonal=1)
 
-    def forward(self, image_tokens: torch.Tensor, text_tokens: torch.Tensor) -> torch.Tensor:
+
+    def _build_embedded_input(self, image_tokens: torch.Tensor, text_tokens: torch.Tensor) -> torch.Tensor:
         """
+        Apply embeddings on separete tokens inputs and concat to one tensor.
+
         Args:
-            image_tokens: [B, N_img, 768]
+            image_tokens: [B, K, D]
             text_tokens:  [B, T]
 
         Returns:
-            logits: [B, T, vocab_size].
+            full sequence: [B, seq, d_model].
         """
+        device = image_tokens.device
+        # 1. data reading
         if image_tokens.ndim != 3:
-            raise ValueError(f"image_tokens must have shape [B, N_img, C], got {image_tokens.shape}")
+            raise ValueError(f"Error! The image_tokens must have shape [B, K, D], got {image_tokens.shape}.")
         if text_tokens.ndim != 2:
-            raise ValueError(f"text_tokens must have shape [B, T], got {text_tokens.shape}")
+            raise ValueError(f"Error! The text_tokens must have shape [B, T], got {text_tokens.shape}.")
 
         batch_size, n_img, c_img = image_tokens.shape
-        _, t = text_tokens.shape
+        if n_img != self.img_prefix_len :
+            raise ValueError(f"Error! The number of visual tokens {n_img} differs from the expected number {self.img_prefix_len}.")
+        if c_img != self.d_model:
+            raise ValueError(f"Error! The dimension of visual tokens {c_img} differs from the expected number {self.d_model}.")
+        batch_text, t = text_tokens.shape
 
-        if c_img != self.visual_token_dim:
-            raise ValueError(f"Expected visual token dim = {self.visual_token_dim}, got {c_img}")
+        if batch_size != batch_text :
+            raise ValueError(f"Error! The inconsistency between batch size of images tokens ({batch_size}) and text tokens ({batch_text})")
 
         total_len = n_img + t
         if total_len > self.max_seq_len:
             raise ValueError(f"Total sequence length {total_len} exceeds max_seq_len={self.max_seq_len}")
 
-        # 1. trasnform visual prefix to model dimension
-        visual_emb = self.visual_proj(image_tokens)  # [B, N_img, d_model]
+        img_pos_ids = torch.arange(n_img, device=device).unsqueeze(0).expand(batch_size, -1)
+        txt_pos_ids = torch.arange(t, device=device).unsqueeze(0).expand(batch_size, -1)
 
-        # 2. embedding for text prefix
-        text_emb = self.token_embed(text_tokens)     # [B, T, d_model]
+        img_type_ids = torch.zeros((batch_size, n_img), dtype=torch.long, device=device)
+        txt_type_ids = torch.ones((batch_size, t), dtype=torch.long, device=device)
 
-        # 3. concatenate: [image_prefix] + [text_prefix]
-        x = torch.cat([visual_emb, text_emb], dim=1)  # [B, N_img + T, d_model] !!! N_img + T = seq
+        text_emb = self.token_embed(text_tokens)
 
-        # 4. add positional embeddings
-        positions = torch.arange(total_len, device=x.device).unsqueeze(0)  # [1, seq] with [0, 1, 2, ..., seq - 1]
-        x = x + self.pos_embed(positions)
+        img_emb = image_tokens + self.img_pos_emb(img_pos_ids) + self.type_emb(img_type_ids)
+        txt_emb = text_emb + self.txt_pos_emb(txt_pos_ids) + self.type_emb(txt_type_ids)
 
-        # 5. causal mask
+
+
+        # 5. concatenate: [image] + [text]
+        x = torch.cat([img_emb, txt_emb], dim=1)  # [B, N_img + T, d_model] !!! N_img + T = seq
+
+        # 6. embedding dropout
+        x = self.emd_drop(x)
+
+        return x
+
+
+
+    def forward(self, image_tokens: torch.Tensor, text_tokens: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            image_tokens: [B, K, D]
+            text_tokens:  [B, T]
+
+        Returns:
+            logits: [B, T, vocab_size].
+        """
+        # 1. add positional information and concat data
+        x = self._build_embedded_input(image_tokens, text_tokens)  # [B, seq, d_model]
+        batch_size, total_len, _ = x.shape
+
+        # 2. causal mask
         causal_mask = self.build_causal_mask(total_len, x.device)  # [seq, seq]
 
-        # 6. padding mask
+        # 3. padding mask
         # uncommit image tokens from masking => False
-        image_padding_mask = torch.zeros(batch_size, n_img, dtype=torch.bool, device=x.device)
+        image_padding_mask = torch.zeros(batch_size, self.img_prefix_len, dtype=torch.bool, device=x.device)
 
         # text pad positions => True
         text_padding_mask = (text_tokens == self.pad_token_id)
 
         key_padding_mask = torch.cat([image_padding_mask, text_padding_mask], dim=1)  # [B, L]
 
-        # 7. transformer
+        # 4. transformer
         x = self.transformer(src=x, mask=causal_mask, src_key_padding_mask=key_padding_mask,)
 
+        # 5. norm
         x = self.norm(x)
 
-        # 8. keep only text positions for seq modeling
-        text_hidden = x[:, n_img:, :]  # [B, T, d_model]
+        # 6. keep only text positions for seq modeling
+        text_hidden = x[:, self.img_prefix_len:, :]  # [B, T, d_model]
+        
+        # 7. transform to vocab dimension
         return self.l_logits(text_hidden)  # [B, T, vocab_size]
 
     @torch.no_grad()

@@ -3,9 +3,14 @@ import torch.nn as nn
 
 from .decoderonly import DecoderOnly
 from .visualtokenizer import VisualTokenizer
+from .visualadapter import VisualAdapter
+
+# TODO: delete max seq len as param
+# TODO: test with 300 num of img tokens
 
 
 class Knn(nn.Module):
+
     """
     Full KNN-OCR model:
         image -> VisualTokenizer -> DecoderOnly -> text
@@ -35,24 +40,30 @@ class Knn(nn.Module):
         num_layers: int = 6,
         dim_feedforward: int = 2048,
         dropout: float = 0.1,
-        max_seq_len: int = 1024,
+        max_seq_len: int = DecoderOnly.MAX_SEQ_LEN,
     ):
         super().__init__()
 
-        self.visual_tokenizer = VisualTokenizer(is_pretrained=is_pretrain_swin)
+        self.visual_tokenizer = VisualTokenizer(is_pretrained = is_pretrain_swin)
+
+        self.visual_adapter = VisualAdapter(
+            in_dim = VisualTokenizer.VISUAL_TOKEN_DIM, 
+            out_dim = d_model, 
+            num_tokens = DecoderOnly.NUM_OF_IMG_TOKENS
+        )
 
         self.decoder = DecoderOnly(
-            vocab_size=vocab_size,
-            pad_token_id=pad_token_id,
-            bos_token_id=bos_token_id,
-            eos_token_id=eos_token_id,
-            d_model=d_model,
-            nhead=nhead,
-            num_layers=num_layers,
-            dim_feedforward=dim_feedforward,
-            dropout=dropout,
-            max_seq_len=max_seq_len,
-            visual_token_dim=self.visual_tokenizer.get_out_dim(),
+            vocab_size = vocab_size,
+            pad_token_id = pad_token_id,
+            bos_token_id = bos_token_id,
+            eos_token_id = eos_token_id,
+            d_model = d_model,
+            nhead = nhead,
+            num_layers = num_layers,
+            dim_feedforward = dim_feedforward,
+            dropout = dropout,
+            max_seq_len = max_seq_len,
+            visual_token_dim = VisualTokenizer.VISUAL_TOKEN_DIM,
         )
 
     def forward(self, images: torch.Tensor, text_tokens: torch.Tensor) -> torch.Tensor:
@@ -64,8 +75,10 @@ class Knn(nn.Module):
         Returns:
             logits: [B, T, vocab_size]
         """
-        image_tokens = self.visual_tokenizer(images)   # [B, N_img, 768]
-        logits = self.decoder(image_tokens, text_tokens)
+        image_tokens = self.visual_tokenizer(images)        # [B, H', W', 768]
+        img_prefix = self.visual_adapter(image_tokens)      # [B, K, D]
+        logits = self.decoder(img_prefix, text_tokens)      # [B, T, vocab_size]
+
         return logits
 
     @torch.no_grad()

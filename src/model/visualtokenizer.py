@@ -36,10 +36,6 @@ class VisualTokenizer(nn.Module):
         # x: [B, 3, H, W]
         x = self._feature_extractor(x)
         x = self._norm(x)
-        # x: [B, H', W', C]
         
-        b, h, w, c = x.shape
-        return x.reshape(b, h * w, c)  # [B, N, C]
-        
-    def get_out_dim(self) -> int:
-        return 768
+        return x  # x: [B, H', W', C]
+

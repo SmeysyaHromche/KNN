@@ -13,6 +13,9 @@ show_help() {
     echo "  -a, --activate       Activate environment (must be sourced)"
     echo "  -e, --extra NAME     Install optional dependency group into existing environment"
     echo "                       Example: $0 --extra dev"
+    echo "  -t, --torch TYPE     Install PyTorch into existing environment"
+    echo "                       TYPE: cpu | cuda"
+    echo "                       Example: $0 --torch cpu"
     echo "  -h, --help           Show this help message"
 }
 
@@ -55,6 +58,40 @@ install_extra() {
     pip install -e ".[${EXTRA_NAME}]" || safe_return 1
 
     echo "Extra dependencies installed."
+}
+
+install_torch() {
+    TORCH_TYPE="$1"
+
+    if [ -z "$TORCH_TYPE" ]; then
+        echo "Missing PyTorch type."
+        echo "Usage: $0 --torch [cpu|cuda]"
+        safe_return 1
+    fi
+
+    if [ ! -d "$ENV_DIR" ]; then
+        echo "Environment does not exist. Create it first."
+        safe_return 1
+    fi
+
+    echo "Activating environment..."
+    . "$ENV_DIR/bin/activate" || safe_return 1
+
+    echo "Installing PyTorch..."
+
+    if [ "$TORCH_TYPE" = "cpu" ]; then
+        echo "Installing CPU version..."
+        pip install torch torchvision torchaudio || safe_return 1
+    elif [ "$TORCH_TYPE" = "cuda" ]; then
+        echo "Installing CUDA version (cu121)..."
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 || safe_return 1
+    else
+        echo "Unknown PyTorch type: $TORCH_TYPE"
+        echo "Allowed values: cpu, cuda"
+        safe_return 1
+    fi
+
+    echo "PyTorch installed."
 }
 
 create_env() {
@@ -145,6 +182,13 @@ case "$1" in
             safe_return 1
         fi
         install_extra "$2"
+        ;;
+    -t|--torch)
+        if [ $# -ne 2 ]; then
+            echo "Usage: $0 --torch [cpu|cuda]"
+            safe_return 1
+        fi
+        install_torch "$2"
         ;;
     -h|--help)
         show_help

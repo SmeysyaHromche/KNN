@@ -24,7 +24,7 @@ from src.model.knn import Knn
 config_path = Path("learnconfig.json")
 config = LearnConfig.model_validate_json(config_path.read_text())
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = config.train.device if torch.cuda.is_available() else "cpu"
 
 # Tokenizer
 tokenizer = Tokenizer(Path(config.data.path_to_vocabulary_file))

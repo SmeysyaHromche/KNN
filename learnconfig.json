@@ -17,7 +17,8 @@
         "save_model_per_epoch": true,
         "output_model_dir": "src/learn/output",
         "optimizer_lr": 1e-4,
-        "swin_optimizer_lr": 1e-5
+        "swin_optimizer_lr": 1e-5,
+        "device": "cuda"
     },
     "model":{
         "d_model": 512,

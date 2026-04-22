@@ -20,6 +20,7 @@ class LearnTrainConfig(BaseModel):
     output_model_dir: str
     optimizer_lr: float
     swin_optimizer_lr: float
+    device: str
 
 
 class LearnModelConfig(BaseModel):

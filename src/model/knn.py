@@ -93,4 +93,5 @@ class Knn(nn.Module):
             generated tokens: [B, T_generated]
         """
         image_tokens = self.visual_tokenizer(images)
-        return self.decoder.generate(image_tokens=image_tokens, max_new_tokens=max_new_tokens)
+        img_prefix = self.visual_adapter(image_tokens)
+        return self.decoder.generate(image_tokens=img_prefix, max_new_tokens=max_new_tokens)

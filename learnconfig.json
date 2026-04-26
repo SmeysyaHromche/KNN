@@ -38,6 +38,7 @@
         "max_seq_len": 1024,
 
         "is_pretrain_swin": true,
-        "is_pretrain_vgg": true
+        "is_pretrain_vgg": true,
+        "is_pretrained_convnext": true
     }
 }

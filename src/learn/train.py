@@ -65,6 +65,18 @@ def unfreeze_norm_layers(model):
     # Unfreeze final output norm
     model.visual_tokenizer._norm.requires_grad_(True)
 
+def _unfreeze_cnn(model, name:str):
+    print(f"-> Unfreezing {name} backbone")
+
+    for param in model.visual_tokenizer.parameters():
+        param.requires_grad = True
+
+def unfreeze_vgg(model):
+    _unfreeze_cnn(model, "VGG")
+
+def unfreeze_convnext(model):
+    _unfreeze_cnn(model, "ConvNeXt")
+
 def build_eos_mask(targets, eos_id, pad_id):
     mask = targets != pad_id
 
@@ -185,16 +197,30 @@ if __name__ == "__main__":
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #                       Model
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    pretrain_type = {
+        "swin": config.model.is_pretrain_swin,
+        "vgg": config.model.is_pretrain_vgg,
+        "convnext": config.model.is_pretrained_convnext
+    }
 
     model = Knn(
         vocab_size=tokenizer.get_vocab_size(),
         pad_token_id=PAD_IDX,
         bos_token_id=BOS_IDX,
         eos_token_id=EOS_IDX,
-        is_pretrain_swin=config.model.is_pretrain_swin
+
+        feature_extractor=config.model.feature_extractor,
+        is_pretrain_backbone=pretrain_type.get(config.model.feature_extractor, True),
+
+        d_model=config.model.d_model,
+        nhead=config.model.nhead,
+        num_layers=config.model.num_layers,
+        dim_feedforward=config.model.dim_feedforward,
+        dropout=config.model.dropout,
+        max_seq_len=config.model.max_seq_len,
     ).to(DEVICE)
 
-    # Freeze Swin backbone
+    # Freeze Swin | VGG | ConvNeXt backbone
     for param in model.visual_tokenizer.parameters():
         param.requires_grad = False
 
@@ -212,27 +238,49 @@ if __name__ == "__main__":
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #                     Training
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    feature_extractor = config.model.feature_extractor
 
     for epoch in range(1, config.train.num_of_epochs + 1):
-        if epoch == config.train.unfreeze_swin_norms_epoch:
-            unfreeze_norm_layers(model)
+        # Swin specific model manipulation
+        if feature_extractor == "swin":
+            if epoch == config.train.unfreeze_swin_norms_epoch:
+                unfreeze_norm_layers(model)
 
-            # optimizer.add_param_group(
-            #     {"params": model.visual_tokenizer.parameters(), "lr": config.train.swin_optimizer_lr}
-            # )
+                # optimizer.add_param_group(
+                #     {"params": model.visual_tokenizer.parameters(), "lr": config.train.swin_optimizer_lr}
+                # )
 
-            trainable = [
-                p for p in model.visual_tokenizer.parameters()
-                if p.requires_grad
-            ]
+                trainable = [
+                    p for p in model.visual_tokenizer.parameters()
+                    if p.requires_grad
+                ]
 
-            optimizer.add_param_group({
-                "params": trainable,
-                "lr": config.train.swin_optimizer_lr
-            })
+                optimizer.add_param_group({
+                    "params": trainable,
+                    "lr": config.train.swin_optimizer_lr
+                })
 
-        if epoch == config.train.unfreeze_swin_epoch:
-            unfreeze_swin_stage3(model)        
+            if epoch == config.train.unfreeze_swin_epoch:
+                unfreeze_swin_stage3(model)  
+
+        # VGG specific model manipulation
+        elif feature_extractor == "vgg":
+            if epoch == config.train.unfreeze_vgg_epoch:
+                unfreeze_vgg(model)
+
+                optimizer.add_param_group({
+                    "params": model.visual_tokenizer.parameters(),
+                    "lr": config.train.vgg_optimizer_lr
+                })
+
+        elif feature_extractor == "convnext":
+            if epoch == config.train.unfreeze_convnext_epoch:
+                unfreeze_convnext(model)
+
+                optimizer.add_param_group({
+                    "params": model.visual_tokenizer.parameters(),
+                    "lr": config.train.convnext_optimizer_lr
+                })
 
         # Print progress info
         train_loss = run_epoch(model, train_loader, optimizer=optimizer, epoch=epoch)

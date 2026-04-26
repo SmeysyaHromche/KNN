@@ -1,3 +1,4 @@
+from typing import Literal
 from pydantic import BaseModel
 
 class LearnDataConfig(BaseModel):
@@ -14,23 +15,38 @@ class LearnDataConfig(BaseModel):
 
 class LearnTrainConfig(BaseModel):
     num_of_epochs: int
-    unfreeze_swin_epoch: int
-    unfreeze_swin_norms_epoch: int
     save_model_per_epoch: bool
     output_model_dir: str
     optimizer_lr: float
-    swin_optimizer_lr: float
     device: str
+
+    # Swin-specific configurations
+    unfreeze_swin_epoch: int
+    unfreeze_swin_norms_epoch: int
+    swin_optimizer_lr: float
+
+    # VGG-specific configurations
+    unfreeze_vgg_epoch: int
+    vgg_optimizer_lr: float
+
+    # ConvNeXt-specific configurations
+    unfreeze_convnext_epoch: int
+    convnext_optimizer_lr: float
 
 
 class LearnModelConfig(BaseModel):
+    feature_extractor: Literal["swin", "vgg", "convnext"] = "swin"
+
     d_model: int
     nhead: int
     num_layers: int
     dim_feedforward: int
     dropout: float
     max_seq_len: int
-    is_pretrain_swin: bool
+
+    is_pretrain_swin: bool = True
+    is_pretrain_vgg: bool = True
+    is_pretrained_convnext: bool = True
 
 
 class LearnConfig(BaseModel):

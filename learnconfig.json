@@ -1,7 +1,7 @@
 {
     "data":{
         "path_to_trn_meta_db": ".data/lines_split_train.lmdb",
-        "path_to_vld_meta_db": "",
+        "path_to_vld_meta_db": ".data/lines_split_valid.lmdb",
         "path_to_tst_meta_db": "",    
         "path_to_db": ".data/lines_48-1.15.lmdb",
         "path_to_vocabulary_file": "src/common/vocabulary.txt",
@@ -12,21 +12,32 @@
     },
     "train":{
         "num_of_epochs": 10,
-        "unfreeze_swin_epoch": 4,
-        "unfreeze_swin_norms_epoch": 2,
         "save_model_per_epoch": true,
         "output_model_dir": "src/learn/output",
         "optimizer_lr": 1e-4,
+        "device": "cuda",
+
+        "unfreeze_swin_epoch": 4,
+        "unfreeze_swin_norms_epoch": 2,
         "swin_optimizer_lr": 1e-5,
-        "device": "cuda"
+
+        "unfreeze_vgg_epoch": 3,
+        "vgg_optimizer_lr": 5e-5,
+
+        "unfreeze_convnext_epoch": 3,
+        "convnext_optimizer_lr": 5e-5
     },
     "model":{
+        "feature_extractor": "convnext",
+
         "d_model": 512,
         "nhead": 8,
         "num_layers": 6,
         "dim_feedforward": 2048,
         "dropout": 0.1,
         "max_seq_len": 1024,
-        "is_pretrain_swin": true
+
+        "is_pretrain_swin": true,
+        "is_pretrain_vgg": true
     }
 }

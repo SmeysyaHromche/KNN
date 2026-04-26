@@ -20,7 +20,7 @@ class Knn(nn.Module):
         pad_token_id (int): Padding token id.
         bos_token_id (int): Begin-of-sequence token id.
         eos_token_id (int): End-of-sequence token id.
-        is_pretrained (bool): Whether to use pretrained Swin weights.
+        is_pretrained (bool): Whether to use pretrained backbone weights.
         d_model (int): Transformer hidden size.
         nhead (int): Number of attention heads.
         num_layers (int): Number of transformer layers.
@@ -34,7 +34,10 @@ class Knn(nn.Module):
         pad_token_id: int,
         bos_token_id: int,
         eos_token_id: int,
-        is_pretrain_swin: bool = True,
+
+        feature_extractor: str = "swin",
+        is_pretrain_backbone: bool = True,
+
         d_model: int = 512,
         nhead: int = 8,
         num_layers: int = 6,
@@ -44,10 +47,14 @@ class Knn(nn.Module):
     ):
         super().__init__()
 
-        self.visual_tokenizer = VisualTokenizer(is_pretrained = is_pretrain_swin)
+        # Backbone
+        self.visual_tokenizer = VisualTokenizer(
+            backbone=feature_extractor,
+            is_pretrained=is_pretrain_backbone
+        )
 
         self.visual_adapter = VisualAdapter(
-            in_dim = VisualTokenizer.VISUAL_TOKEN_DIM, 
+            in_dim = self.visual_tokenizer.visual_token_dim, 
             out_dim = d_model, 
             num_tokens = DecoderOnly.NUM_OF_IMG_TOKENS
         )

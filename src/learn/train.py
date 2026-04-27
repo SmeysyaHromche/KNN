@@ -92,6 +92,30 @@ def build_eos_mask(targets, eos_id, pad_id):
 
     return mask
 
+def add_trainable_params_to_optimizer(optimizer, module, lr):
+    """
+    Add newly trainable params from module to optimizer.
+    Avoid duplicates.
+    """
+    existing = {
+        id(p)
+        for group in optimizer.param_groups
+        for p in group["params"]
+    }
+
+    new_params = [
+        p for p in module.parameters()
+        if p.requires_grad and id(p) not in existing
+    ]
+
+    if new_params:
+        optimizer.add_param_group({
+            "params": new_params,
+            "lr": lr
+        })
+
+    print(f"-> Added {len(new_params)} params to optimizer")
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #                    Train loop
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -299,37 +323,51 @@ if __name__ == "__main__":
                 #     {"params": model.visual_tokenizer.parameters(), "lr": config.train.swin_optimizer_lr}
                 # )
 
-                trainable = [
-                    p for p in model.visual_tokenizer.parameters()
-                    if p.requires_grad
-                ]
+                # trainable = [
+                #     p for p in model.visual_tokenizer.parameters()
+                #     if p.requires_grad
+                # ]
 
-                optimizer.add_param_group({
-                    "params": trainable,
-                    "lr": config.train.swin_optimizer_lr
-                })
+                # optimizer.add_param_group({
+                #     "params": trainable,
+                #     "lr": config.train.swin_optimizer_lr
+                # })
+
+                add_trainable_params_to_optimizer(
+                    optimizer,
+                    model.visual_tokenizer,
+                    config.train.swin_optimizer_lr
+                )
 
             if epoch == config.train.unfreeze_swin_epoch:
-                unfreeze_swin_stage3(model)  
+                unfreeze_swin_stage3(model)
+
+                add_trainable_params_to_optimizer(
+                    optimizer,
+                    model.visual_tokenizer,
+                    config.train.swin_optimizer_lr
+                )
 
         # VGG specific model manipulation
         elif feature_extractor == "vgg":
             if epoch == config.train.unfreeze_vgg_epoch:
                 unfreeze_vgg(model)
 
-                optimizer.add_param_group({
-                    "params": model.visual_tokenizer.parameters(),
-                    "lr": config.train.vgg_optimizer_lr
-                })
+                add_trainable_params_to_optimizer(
+                    optimizer,
+                    model.visual_tokenizer,
+                    config.train.vgg_optimizer_lr
+                )
 
         elif feature_extractor == "convnext":
             if epoch == config.train.unfreeze_convnext_epoch:
                 unfreeze_convnext(model)
 
-                optimizer.add_param_group({
-                    "params": model.visual_tokenizer.parameters(),
-                    "lr": config.train.convnext_optimizer_lr
-                })
+                add_trainable_params_to_optimizer(
+                    optimizer,
+                    model.visual_tokenizer,
+                    config.train.convnext_optimizer_lr
+                )
 
         # Print progress info
         train_loss = run_epoch(model, train_loader, optimizer=optimizer, epoch=epoch)

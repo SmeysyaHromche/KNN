@@ -97,8 +97,6 @@ def build_eos_mask(targets, eos_id, pad_id):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def run_batch(model, images, labels, tokenizer, optimizer=None):
-    images = images.to(DEVICE)
-
     # Encode each label into token IDs with BOS and EOS
     target_indices = [
         torch.tensor([BOS_IDX] + tokenizer.encode(label) + [EOS_IDX], device=DEVICE)
@@ -151,6 +149,8 @@ def run_epoch(model, loader, optimizer=None, epoch=None):
 
     with context:
         for batch_idx, (images, labels, _) in enumerate(loader):
+            images = images.to(DEVICE)
+
             loss = run_batch(model, images, labels, tokenizer, optimizer)
 
             total_loss += loss
@@ -173,6 +173,7 @@ def evaluate(model, loader):
 
     with torch.no_grad():
         for images, labels, _ in loader:
+            images = images.to(DEVICE)
 
             loss = run_batch(model, images, labels, tokenizer, optimizer=None)
 
@@ -248,7 +249,7 @@ if __name__ == "__main__":
     pretrain_type = {
         "swin": config.model.is_pretrain_swin,
         "vgg": config.model.is_pretrain_vgg,
-        "convnext": config.model.is_pretrained_convnext
+        "convnext": config.model.is_pretrain_convnext
     }
 
     model = Knn(

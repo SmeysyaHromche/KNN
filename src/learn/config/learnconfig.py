@@ -46,7 +46,7 @@ class LearnModelConfig(BaseModel):
 
     is_pretrain_swin: bool = True
     is_pretrain_vgg: bool = True
-    is_pretrained_convnext: bool = True
+    is_pretrain_convnext: bool = True
 
 
 class LearnConfig(BaseModel):

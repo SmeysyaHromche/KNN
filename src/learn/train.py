@@ -203,7 +203,7 @@ def evaluate(model, loader):
 
             total_loss += loss
 
-            generated = model.generate(images, max_new_tokens=config.model.max_seq_len)
+            generated = model.generate(images, max_new_tokens=config.model.max_seq_len-1)
 
             for i in range(generated.size(0)):
                 pred = tokenizer.decode(generated[i].tolist())

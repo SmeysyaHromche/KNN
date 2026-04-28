@@ -72,17 +72,20 @@ def unfreeze_norm_layers(model):
     # Unfreeze final output norm
     model.visual_tokenizer._norm.requires_grad_(True)
 
-def _unfreeze_cnn(model, name:str):
+def _unfreeze_backbone(model, name:str):
     print(f"-> Unfreezing {name} backbone")
 
     for param in model.visual_tokenizer.parameters():
         param.requires_grad = True
 
 def unfreeze_vgg(model):
-    _unfreeze_cnn(model, "VGG")
+    _unfreeze_backbone(model, "VGG")
 
 def unfreeze_convnext(model):
-    _unfreeze_cnn(model, "ConvNeXt")
+    _unfreeze_backbone(model, "ConvNeXt")
+
+def unfreeze_swin(model):
+    _unfreeze_backbone(model, "Swin")
 
 def build_eos_mask(targets, eos_id, pad_id):
     mask = targets != pad_id
@@ -316,31 +319,26 @@ if __name__ == "__main__":
     for epoch in range(1, config.train.num_of_epochs + 1):
         # Swin specific model manipulation
         if feature_extractor == "swin":
-            if epoch == config.train.unfreeze_swin_norms_epoch:
-                unfreeze_norm_layers(model)
+            # if epoch == config.train.unfreeze_swin_norms_epoch:
+            #     unfreeze_norm_layers(model)
 
-                # optimizer.add_param_group(
-                #     {"params": model.visual_tokenizer.parameters(), "lr": config.train.swin_optimizer_lr}
-                # )
+            #     add_trainable_params_to_optimizer(
+            #         optimizer,
+            #         model.visual_tokenizer,
+            #         config.train.swin_optimizer_lr
+            #     )
 
-                # trainable = [
-                #     p for p in model.visual_tokenizer.parameters()
-                #     if p.requires_grad
-                # ]
+            # if epoch == config.train.unfreeze_swin_epoch:
+            #     unfreeze_swin_stage3(model)
 
-                # optimizer.add_param_group({
-                #     "params": trainable,
-                #     "lr": config.train.swin_optimizer_lr
-                # })
-
-                add_trainable_params_to_optimizer(
-                    optimizer,
-                    model.visual_tokenizer,
-                    config.train.swin_optimizer_lr
-                )
+            #     add_trainable_params_to_optimizer(
+            #         optimizer,
+            #         model.visual_tokenizer,
+            #         config.train.swin_optimizer_lr
+            #     )
 
             if epoch == config.train.unfreeze_swin_epoch:
-                unfreeze_swin_stage3(model)
+                unfreeze_swin(model)
 
                 add_trainable_params_to_optimizer(
                     optimizer,

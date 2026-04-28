@@ -17,9 +17,9 @@
         "optimizer_lr": 1e-4,
         "device": "cuda",
 
-        "unfreeze_swin_epoch": 4,
-        "unfreeze_swin_norms_epoch": 2,
-        "swin_optimizer_lr": 1e-5,
+        "unfreeze_swin_epoch": 2,
+        "unfreeze_swin_norms_epoch": -1,
+        "swin_optimizer_lr": 2e-5,
 
         "unfreeze_vgg_epoch": 3,
         "vgg_optimizer_lr": 5e-5,

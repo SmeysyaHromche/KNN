@@ -218,6 +218,9 @@ class DecoderOnly(nn.Module):
         Returns:
             generated tokens: [B, T_generated] (Includes <bos>).
         """
+        max_allowed = self.text_seq_len - 1
+        max_new_tokens = min(max_new_tokens, max_allowed)
+
         batch_size = image_tokens.size(0)
 
         generated = torch.full(

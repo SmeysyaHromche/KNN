@@ -23,7 +23,7 @@ class IAMLineDataset(Dataset):
         image = sample["image"].convert("RGB")
         image = np.array(image)                     # [H, W, 3]
         image = np.transpose(image, (2, 0, 1))      # [3, H, W]
-        image = torch.from_numpy(image).float()
+        image = torch.from_numpy(image).float() / 255.0
         
         label = sample["text"]
 

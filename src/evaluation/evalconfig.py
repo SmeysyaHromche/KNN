@@ -18,7 +18,7 @@ class EvalDataConfig(BaseModel):
 
 class EvalModelConfig(BaseModel):
     path_to_model: str
-    device: Literal["cpu", "cuda"]
+    device: str
     is_pretrain_swin: bool
     max_seq_len: int
     img_pad_value: PadColor

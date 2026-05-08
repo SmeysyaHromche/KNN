@@ -54,7 +54,7 @@ def is_device_cuda(device: str) -> bool:
     :param device: Name of the device
     :returns: True if the device is 'cuda'
     """
-    return device == "cuda"
+    return device.startswith("cuda")
 
 
 def print_progress_info(ocr_metrics: OCRMetrics, current_batch_num: int, batch_total: int) -> None:

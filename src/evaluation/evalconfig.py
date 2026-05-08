@@ -8,6 +8,7 @@ class PadColor(float, Enum):
     BLACK = 0.0
 
 class EvalDataConfig(BaseModel):
+    dataset: str
     path_to_tst_meta_db: str
     path_to_db: str
     path_to_vocabulary_file: str

@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 
 from src.model.knn import Knn
-from src.learn.database import OcrCollateFn, OcrDataset
+from src.learn.database import OcrCollateFn, OcrDataset, IAMLineDataset
 from src.common.tokenizer import Tokenizer
 
 from .evalconfig import EvalConfig
@@ -130,16 +130,21 @@ if __name__ == "__main__":
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #                    Test Dataset
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    dataset = OcrDataset(
-        path_to_db=PATH_TO_DB,
-        path_to_meta_db=PATH_TO_META_DB,
-        transform=None
-    )
+
+    if config.data.dataset == "iam":
+        dataset = IAMLineDataset(split="validation")
+    else:
+        dataset = OcrDataset(
+            path_to_db=PATH_TO_DB,
+            path_to_meta_db=PATH_TO_META_DB,
+            transform=None
+        )
 
     collate_fn = OcrCollateFn(
         target_height=TARGET_HEIGHT,
         pad_value=PAD_COLOR
     )
+
     test_loader = DataLoader(
         dataset,
         batch_size=BATCH_SIZE,

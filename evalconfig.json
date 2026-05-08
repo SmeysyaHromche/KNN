@@ -1,14 +1,15 @@
 {
     "data": {
-        "path_to_tst_meta_db": "",    
-        "path_to_db": "",
+        "dataset": "ocr",
+        "path_to_tst_meta_db": "/home/xkukht01/knn_data/knn_ocr/read/valid.lmdb",    
+        "path_to_db": "/home/xkukht01/knn_data/knn_ocr/read/lines_48-1.15.lmdb",
         "path_to_vocabulary_file": "src/common/vocabulary.txt",
         "image_target_height": 32,
         "batch_size": 64
     },
     "model": {
-        "path_to_model": "",
-        "device": "cuda",
+        "path_to_model": "/home/xkukht01/Dev/KNN/out/swin/epoch_20.pt",
+        "device": "cpu",
         "is_pretrain_swin": true,
         "max_seq_len": 1024,
         "img_pad_value": 1.0

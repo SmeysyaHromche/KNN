@@ -2,6 +2,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 class LearnDataConfig(BaseModel):
+    dataset: str
     path_to_trn_meta_db: str
     path_to_vld_meta_db: str
     path_to_tst_meta_db: str

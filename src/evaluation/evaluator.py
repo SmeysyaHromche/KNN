@@ -160,7 +160,7 @@ if __name__ == "__main__":
         pad_token_id=PAD_IDX,
         bos_token_id=BOS_IDX,
         eos_token_id=EOS_IDX,
-        is_pretrain_swin=True,
+        is_pretrain_backbone=True,
     ).to(DEVICE)
 
     # Load weights into the model

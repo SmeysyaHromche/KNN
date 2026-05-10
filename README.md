@@ -53,7 +53,7 @@ where:
 * `id_img` — the image key stored in the LMDB database;
 * `label` — the corresponding text transcription.
 
-After preparing the `.txt` annotation files, the `scripts/file_to_lmdb.py` script should be executed. This script converts the annotation files into an LMDB-based format optimized for fast parsing and efficient `DataLoader` performance.
+After preparing the `.txt` annotation files, the `scripts/file_to_lmdb.py` script should be executed. This script converts the annotation files into an LMDB-based format optimized for fast parsing and efficient `DataLoader` performance (after as LMDB metadata file).
 
 Detailed information about available arguments can be obtained with:
 
